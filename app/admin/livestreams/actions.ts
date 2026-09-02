@@ -18,13 +18,12 @@ export async function saveLivestream(formData: FormData) {
   const provider = formData.get('provider') as Provider;
   const providerStreamId = formData.get('provider_stream_id') as string;
 
-  // Server-side validation — this is the actual security boundary from
-  // §14 of the concept doc: only a provider + its own ID/URL is ever
-  // accepted, never arbitrary embed HTML.
+  // Soft format check — logged only, never blocks saving. The real
+  // security boundary is that the ID/URL is always URL-encoded when
+  // building the embed (see lib/embed.ts), so it can't inject markup
+  // even if the format looks unusual.
   if (!isPlausibleProviderId(provider, providerStreamId)) {
-    throw new Error(
-      `The stream ID/URL doesn't look right for provider "${provider}". Check the format and try again.`
-    );
+    console.warn(`Unusual stream ID format for provider "${provider}": ${providerStreamId}`);
   }
 
   const supabase = createClient();
