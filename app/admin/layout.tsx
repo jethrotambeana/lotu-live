@@ -4,6 +4,9 @@ import LogoutButton from '@/components/LogoutButton';
 
 const ADMIN_NAV = [
   { href: '/admin', label: 'Dashboard' },
+  { href: '/admin/churches', label: 'Churches' },
+  { href: '/admin/events', label: 'Events' },
+  { href: '/admin/livestreams', label: 'Livestreams' },
   { href: '/admin/messages', label: 'Messages' },
   { href: '/admin/submissions', label: 'Submissions' },
 ];
