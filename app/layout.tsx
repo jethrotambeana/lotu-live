@@ -1,5 +1,6 @@
 import './globals.css';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export const metadata = {
   title: 'LOTU.LIVE — The Pacific Adventist Media Network',
@@ -24,8 +25,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-white text-slate-900">
         <header className="border-b border-slate-200">
           <nav className="mx-auto flex max-w-6xl items-center justify-between p-4">
-            <Link href="/" className="text-lg font-bold">
-              LOTU<span className="text-sky-600">.LIVE</span>
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/logo.png"
+                alt="LOTU.LIVE — Worship Together. Wherever You Are."
+                width={160}
+                height={110}
+                priority
+                className="h-12 w-auto"
+              />
             </Link>
             <ul className="hidden gap-5 text-sm md:flex">
               {NAV.map((item) => (
@@ -39,6 +47,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </nav>
         </header>
         <main>{children}</main>
+        <footer className="mt-12 border-t border-slate-200 py-8 text-center text-sm text-slate-500">
+          <p>LOTU.LIVE — The Pacific Adventist Media Network</p>
+          <p className="mt-1">Vanuatu · Solomon Islands · Papua New Guinea · Fiji</p>
+        </footer>
       </body>
     </html>
   );
