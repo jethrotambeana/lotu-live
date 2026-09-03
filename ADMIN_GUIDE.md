@@ -34,6 +34,9 @@ section in the left sidebar to actually manage anything.
 - **Slug**: this becomes the church's URL (`/church/your-slug`). Leave it
   blank and it's generated automatically from the name.
 - **Edit** / **Delete**: available from the church list.
+- **Island/Province** is worth filling in even though it's optional — the
+  public `/churches` page filters by whatever values are actually in use,
+  so leaving it blank means that church won't be reachable via that filter.
 
 ### Managing Events
 
@@ -41,7 +44,8 @@ section in the left sidebar to actually manage anything.
 
 Same pattern as churches. Additional fields: venue, start/end date and
 time, and a status (Upcoming / Current / Completed) — set this manually as
-an event approaches, happens, and finishes.
+an event approaches, happens, and finishes. The public `/events` page lets
+visitors filter by Country and by this same Status field.
 
 ### Managing Livestreams
 
@@ -58,17 +62,64 @@ supported.
 | Field | What to enter |
 |---|---|
 | Provider | Choose Cloudflare Stream, YouTube, Facebook, or HLS |
-| Provider Stream ID / URL | **YouTube**: just the video ID (the part after `v=` in a YouTube URL, e.g. `dQw4w9WgXcQ`). **Cloudflare**: the Live Input ID from your Cloudflare dashboard. **Facebook**: the full public video/page URL. **HLS**: the full `.m3u8` stream URL. |
+| Provider Stream ID / URL | **YouTube**: just the video ID (the part after `v=` in a YouTube URL, e.g. `dQw4w9WgXcQ`) — a full URL also works, the ID gets extracted automatically. **Cloudflare**: the Live Input ID from your Cloudflare dashboard, or a full `cloudflarestream.com` URL. **Facebook**: the full public video/page URL. **HLS**: the full `.m3u8` stream URL. |
 | Church / Event | Link this stream to an existing church or event, if applicable |
+| Preview Image URL | Leave blank for **YouTube** or **Cloudflare Stream** — it auto-fills from the provider's own thumbnail. For **Facebook** or **HLS**, paste a thumbnail URL manually since those providers don't expose a predictable one. |
 | Status | `live` while streaming, `offline` when not, `upcoming`/`scheduled` for future streams |
 | Visible | Uncheck to hide from the public site without deleting it |
 | Featured | Highlights it in featured sections (once that homepage section is built) |
+| Language | Optional, but filled-in values become filter options on `/live` |
 
 Once you save a stream with status `live` and Visible checked, it appears
 under "Live Now" on the homepage and `/live` automatically.
 
+**Note on the auto-filled preview image**: it's derived once, at the moment
+you click Save. If you add a stream with a blank Preview Image and later
+want the auto-fill to (re-)apply — e.g. after fixing the Provider Stream ID
+— just open Edit and click Save Changes again with the field still blank.
+
 **Show/Hide**: use the quick toggle in the list instead of editing the full
 form if you just need to temporarily hide something.
+
+### Managing Videos
+
+**Admin → Videos**
+
+Same security principle as Livestreams: only enter the provider's own ID or
+URL, never embed code.
+
+| Field | What to enter |
+|---|---|
+| Church / Event | Optional — link the video to an existing church or event if relevant |
+| Speaker / Series | Optional metadata shown on the video's detail page |
+| Provider | Choose Cloudflare Stream, YouTube, or Cloudinary |
+| Provider Video ID / URL | **YouTube**: video ID or full URL. **Cloudflare**: video UID or full `cloudflarestream.com` URL. **Cloudinary**: whatever ID/URL convention you're using — there's no established format yet, so nothing is validated here. |
+| Thumbnail URL | Leave blank for **YouTube** or **Cloudflare Stream** — auto-fills from the provider. For **Cloudinary**, or if you've uploaded a thumbnail separately to **Cloudflare Images** (`imagedelivery.net` URLs), paste it manually. |
+| Language | Optional, but filled-in values become filter options on `/videos` |
+| Categories | Checkboxes pulled from the `categories` table. Check as many as apply — this feeds the Category filter on `/videos`. If no categories show up, none have been created yet (see "Managing Categories" below). |
+| Recorded Date | Optional; used to sort the video catalogue newest-first |
+
+Same note as Livestreams applies: the auto-filled thumbnail is derived at
+save time, so re-save (with Thumbnail URL left blank) if you need it to
+re-apply.
+
+### Managing Categories
+
+There's no admin UI for categories yet — add or rename them directly in
+Supabase → **Table Editor → categories** (just an `id` and a `name`
+column). Once a category exists there, it immediately shows up as a
+checkbox option when adding/editing a video, and as a filter option on
+`/videos`.
+
+### Filters on the Public Site
+
+`/churches`, `/events`, `/videos`, and `/live` each show filter dropdowns
+to visitors. These aren't configured anywhere — they're generated
+automatically from whatever data already exists (e.g. every distinct
+Island/Province value across churches becomes an option). There's nothing
+to maintain here beyond keeping the underlying fields (Island/Province,
+Language, Category, Status, Country) filled in accurately, since a blank
+field on a record just means that record won't surface under that filter.
 
 ### Reading Contact Messages
 
@@ -152,12 +203,22 @@ Then go to Netlify → your site → **Deploys** tab and watch for it to say
    the real-time server error log (Next.js hides detailed errors from the
    page itself in production for security, so the logs are the only place
    to see the actual cause).
-3. Common causes we've hit before:
+3. If an image fails to load with a 400 from `/_next/image`, that's almost
+   always a domain missing from the `images.remotePatterns` allowlist in
+   `next.config.js` — check the failing request's `url=` parameter in
+   DevTools to see which hostname needs adding, then redeploy.
+4. Common causes we've hit before:
    - A Server Action throwing an uncaught error instead of handling it
      gracefully — check the function logs for a stack trace.
    - Missing or incorrect environment variables in Netlify.
    - A database change (e.g. a new required column) that the code doesn't
      account for yet.
+   - A prop name mismatch between a page's Supabase query (snake_case
+     column names) and the component it feeds (which may expect
+     camelCase) — this fails silently with no console error, since the
+     component just receives `undefined` and skips rendering. Worth
+     checking directly against the component's prop types if something
+     renders blank with no error at all.
 
 ### Database changes
 
@@ -176,5 +237,5 @@ undo any database changes — only the website code.
 
 ---
 
-*Keep this guide updated as new admin features (e.g. video management,
-live filters) are added.*
+*Keep this guide updated as new admin features (e.g. provider API live
+detection, custom domain, Cloudinary thumbnail auto-fill) are added.*
