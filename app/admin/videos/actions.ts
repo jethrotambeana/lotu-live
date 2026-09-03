@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabaseServer';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { extractYouTubeId, extractCloudflareId, CLOUDFLARE_CUSTOMER_CODE } from '@/lib/embed';
+import { deriveYouTubeThumbnail, deriveCloudflareThumbnail } from '@/lib/thumbnails';
 
 // videos.provider check constraint only allows these three (see sql/schema.sql) —
 // note this is a different set than livestreams' Provider type in lib/embed.ts
@@ -16,24 +16,6 @@ function slugify(name: string) {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
-}
-
-// YouTube serves this thumbnail for every public video at a stable URL —
-// no API key needed. hqdefault is used (not maxresdefault) because it's
-// guaranteed to exist for every video; maxresdefault 404s on many older
-// or lower-resolution uploads. i.ytimg.com (not img.youtube.com) is used
-// because that's the hostname already allowlisted in next.config.js.
-function deriveYouTubeThumbnail(providerVideoId: string): string {
-  return `https://i.ytimg.com/vi/${extractYouTubeId(providerVideoId)}/hqdefault.jpg`;
-}
-
-// Cloudflare Stream auto-generates a thumbnail at this stable path for every
-// uploaded video — same customer subdomain already used in lib/embed.ts for
-// the player, and already allowlisted in next.config.js (**.cloudflarestream.com).
-function deriveCloudflareThumbnail(providerVideoId: string): string {
-  return `https://customer-${CLOUDFLARE_CUSTOMER_CODE}.cloudflarestream.com/${extractCloudflareId(
-    providerVideoId
-  )}/thumbnails/thumbnail.jpg`;
 }
 
 // Same soft-check pattern as lib/embed.ts's isPlausibleProviderId, extended to

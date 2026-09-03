@@ -10,7 +10,7 @@ alongside the project README.
 
 ### Logging in
 
-1. Go to `https://lotulive.netlify.app/login`
+1. Go to `https://lotu.live/login`
 2. Enter your email and password
 3. You'll land on `/admin` if your account has admin access
 
@@ -145,12 +145,14 @@ There's no in-panel "invite an admin" button yet — this is done directly
 in Supabase:
 
 1. Have the new person create an account at `/signup` and confirm their
-   email.
+   email. (A `profiles` row is now created automatically for every signup,
+   with `role = 'viewer'` — no special access — so you don't need to
+   create the row yourself, just promote it.)
 2. In Supabase → **Authentication → Users**, find their account and copy
    its UUID.
 3. In Supabase → **SQL Editor**, run:
    ```sql
-   insert into profiles (id, role) values ('THEIR-UUID-HERE', 'admin');
+   update profiles set role = 'admin' where id = 'THEIR-UUID-HERE';
    ```
 4. They can now log in at `/login` and reach `/admin`.
 
@@ -162,6 +164,48 @@ update profiles set role = 'viewer' where id = 'THEIR-UUID-HERE';
 ### Logging Out
 
 Click **Log out** at the bottom of the admin sidebar.
+
+### Church Editor Accounts
+
+Beyond full admins, there's a lighter self-service tier: **church editors**.
+A church editor can log in at `/login` but instead of landing on `/admin`,
+they land on `/manage` — a scoped dashboard where they can edit only their
+own church's profile, livestreams, events, and videos. They cannot see or
+touch any other church's data, the Messages inbox, other Submissions, or
+anything else in `/admin`.
+
+**How someone becomes a church editor (automatic):**
+
+1. Someone creates an account at `/signup` (any time — before or after
+   submitting their church).
+2. They submit their church via the public `/submit` form, using the
+   **same email address** as their account.
+3. When you **Approve** that submission under Admin → Submissions, the
+   system automatically checks for a `profiles` row with a matching email.
+   If found (and that account doesn't already have admin or editor access
+   elsewhere), it's automatically upgraded to `role = 'editor'` and linked
+   to the newly created church. The submissions list shows an "Editor
+   access" note on each approved entry confirming whether this worked.
+
+**If auto-linking didn't happen** (e.g. they hadn't signed up yet at
+approval time, or used a different email), link them manually — find their
+UUID under Authentication → Users, find the church's UUID under Admin →
+Churches → Edit (visible in the URL), then in Supabase SQL Editor:
+```sql
+update profiles set role = 'editor', church_id = 'CHURCH-UUID-HERE' where id = 'THEIR-UUID-HERE';
+```
+
+**To remove editor access** without deleting their account:
+```sql
+update profiles set role = 'viewer', church_id = null where id = 'THEIR-UUID-HERE';
+```
+
+Note: an editor's `/manage` forms are intentionally a reduced subset of the
+full admin forms — no Featured toggle, no Type or Country override, and no
+Slug editing for their church (to avoid accidentally breaking a shared
+URL). This is enforced both in the UI and, as a backstop, via Row Level
+Security policies directly on the database — even a modified request
+couldn't reach another church's data.
 
 ---
 

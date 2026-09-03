@@ -1,7 +1,7 @@
 # LOTU.LIVE — Project README
 
 **The Pacific Adventist Media Network**
-Live site: https://lotulive.netlify.app
+Live site: https://lotu.live (previously lotulive.netlify.app — see §8)
 Repository: https://github.com/jethrotambeana/lotu-live
 
 > This document reflects the state of the project as of **September 3, 2026**.
@@ -68,6 +68,15 @@ site.
   - **Submissions** — church sign-up requests from `/submit`, with
     Approve (auto-creates a church record) / Reject actions.
 - `/login` and `/signup` pages for Supabase Auth email/password accounts.
+  Every signup auto-creates a `profiles` row (`role = 'viewer'` by default,
+  via a database trigger) — signing up alone grants no special access.
+- **Church editor accounts** (`/manage`): a lighter, self-service tier
+  below full admin. A user with `role = 'editor'` and a linked `church_id`
+  can manage only their own church's profile, livestreams, events, and
+  videos — scoped both in the UI and via Row Level Security policies at
+  the database level. Becoming an editor happens automatically when a
+  church submission is approved and the submitter's email matches an
+  existing account (see Admin Guide); otherwise an admin links it manually.
 - Database schema with Row Level Security on every table (`sql/schema.sql`).
 
 ### 🚧 Not Yet Built
@@ -80,7 +89,6 @@ site.
   what's listed above (e.g. combining country + category together where
   relevant).
 - Notifications, favorites, managed/native streaming.
-- Custom domain (currently on `lotulive.netlify.app`).
 
 ## 4. Project Structure
 
@@ -111,14 +119,25 @@ app/
     videos/                  List, add/edit form, actions (thumbnail auto-fill, categories)
     messages/page.tsx        Contact messages list
     submissions/             Church submissions + approve/reject actions
+                              (approve auto-links a matching-email account
+                              as the new church's editor)
+  manage/
+    layout.tsx               Editor auth guard + sidebar nav
+    page.tsx                 Own church profile form, actions.ts
+    livestreams/              List, add/edit form, actions — scoped to own church
+    events/                  List, add/edit form, actions — scoped to own church
+    videos/                  List, add/edit form, actions — scoped to own church
 lib/
   supabaseClient.ts          Browser Supabase client
   supabaseServer.ts          Server Component Supabase client (cookie-aware)
   embed.ts                   Whitelisted provider embed builder; also exports
                               extractYouTubeId/extractCloudflareId and
-                              CLOUDFLARE_CUSTOMER_CODE, shared by the
-                              livestreams and videos admin thumbnail logic
+                              CLOUDFLARE_CUSTOMER_CODE
+  thumbnails.ts              Shared YouTube/Cloudflare thumbnail derivation,
+                              used by livestreams, videos, and manage actions
   requireAdmin.ts            Shared admin auth check
+  requireChurchEditor.ts     Shared church-editor auth check (role='editor'
+                              + church_id), used by all /manage routes
 components/
   LiveCard.tsx, StreamPlayer.tsx, ContactForm.tsx,
   SubmitChurchForm.tsx, LogoutButton.tsx, FilterBar.tsx
@@ -171,9 +190,30 @@ next.config.js                 Image domain allowlist (see §6)
 
 ## 7. Next Steps To Consider
 
-- Point a custom domain at Netlify.
 - Consider provider API integration for automatic live/offline status.
 - Consider Cloudinary thumbnail auto-derivation if a stable cloud
   name/public-ID convention gets established.
 - Revisit whether `/churches` and `/events` need additional filters (e.g.
   category) as more content is added.
+
+## 8. Custom Domain (lotu.live)
+
+The site now runs on **lotu.live** as its primary domain (previously
+`lotulive.netlify.app`). Migration checklist:
+
+- Domain added and verified in Netlify → Domain management, set as primary.
+- DNS pointed at Netlify — either via Netlify DNS (nameserver delegation)
+  or an external A record (`@` → Netlify's load balancer IP) plus a `www`
+  CNAME. Whichever was chosen, don't mix both methods.
+- SSL certificate auto-provisioned by Netlify once DNS propagated.
+- **Supabase → Authentication → URL Configuration**: Site URL updated to
+  `https://lotu.live`, and `https://lotu.live/**` added to Redirect URLs.
+  This is the same setting responsible for the "confirmation link →
+  localhost" bug fixed earlier (§6) — skipping this step would silently
+  break signup/login confirmation emails on the new domain.
+- `lotulive.netlify.app` still resolves unless explicitly removed or
+  redirected in Netlify — decide whether to leave it as a working alias or
+  add a redirect rule to `lotu.live`.
+- No code changes were needed for links generated at runtime (e.g. the
+  Share button uses `window.location.href`), since those are always
+  relative to whatever domain the page is actually served from.

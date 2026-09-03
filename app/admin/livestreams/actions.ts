@@ -3,13 +3,8 @@
 import { createClient } from '@/lib/supabaseServer';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import {
-  isPlausibleProviderId,
-  Provider,
-  extractYouTubeId,
-  extractCloudflareId,
-  CLOUDFLARE_CUSTOMER_CODE,
-} from '@/lib/embed';
+import { isPlausibleProviderId, Provider } from '@/lib/embed';
+import { deriveYouTubeThumbnail, deriveCloudflareThumbnail } from '@/lib/thumbnails';
 
 function slugify(name: string) {
   return name
@@ -26,14 +21,9 @@ function slugify(name: string) {
 function deriveLivestreamThumbnail(provider: Provider, providerStreamId: string): string | null {
   switch (provider) {
     case 'youtube':
-      // i.ytimg.com (not img.youtube.com) — matches the domain already
-      // allowlisted in next.config.js. hqdefault is used over maxresdefault
-      // because it's guaranteed to exist for every video.
-      return `https://i.ytimg.com/vi/${extractYouTubeId(providerStreamId)}/hqdefault.jpg`;
+      return deriveYouTubeThumbnail(providerStreamId);
     case 'cloudflare':
-      return `https://customer-${CLOUDFLARE_CUSTOMER_CODE}.cloudflarestream.com/${extractCloudflareId(
-        providerStreamId
-      )}/thumbnails/thumbnail.jpg`;
+      return deriveCloudflareThumbnail(providerStreamId);
     default:
       return null;
   }

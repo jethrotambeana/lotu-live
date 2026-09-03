@@ -165,8 +165,29 @@ create table site_settings (
 -- profile table extending auth.users with a role for admin gating
 create table profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  role text default 'viewer' check (role in ('viewer','editor','admin'))
+  role text default 'viewer' check (role in ('viewer','editor','admin')),
+  email text,                          -- synced via handle_new_user trigger
+  church_id uuid references churches(id) -- set when role = 'editor'; the one
+                                        -- church this account may manage
 );
+create index on profiles (church_id);
+
+-- Auto-create a profiles row (role 'viewer') for every new signup, so
+-- self-service church-editor linking (see submissions approval flow) can
+-- match by email reliably regardless of signup order.
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, role, email)
+  values (new.id, 'viewer', new.email)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
 
 -- Helpful indexes
 create index on livestreams (status, visible);
@@ -216,6 +237,34 @@ create policy "admin write videos" on videos for all using (
 );
 create policy "admin manage submissions" on submissions for update using (
   exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+);
+
+-- Church editors: scoped access to only the one church they're linked to
+-- (profiles.church_id), enforced here at the database level as a backstop
+-- to the application-level scoping in app/manage/*.
+create policy "editor update own church" on churches for update using (
+  exists (
+    select 1 from profiles
+    where id = auth.uid() and role = 'editor' and church_id = churches.id
+  )
+);
+create policy "editor manage own livestreams" on livestreams for all using (
+  exists (
+    select 1 from profiles
+    where id = auth.uid() and role = 'editor' and church_id = livestreams.church_id
+  )
+);
+create policy "editor manage own events" on events for all using (
+  exists (
+    select 1 from profiles
+    where id = auth.uid() and role = 'editor' and church_id = events.host_church_id
+  )
+);
+create policy "editor manage own videos" on videos for all using (
+  exists (
+    select 1 from profiles
+    where id = auth.uid() and role = 'editor' and church_id = videos.church_id
+  )
 );
 
 -- Seed the four launch countries
