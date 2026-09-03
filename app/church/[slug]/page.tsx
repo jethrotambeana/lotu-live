@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import LiveCard from '@/components/LiveCard';
 import VideoCard from '@/components/VideoCard';
 import ShareButton from '@/components/ShareButton';
+import SocialLinks from '@/components/SocialLinks';
 
 export default async function ChurchPage({ params }: { params: { slug: string } }) {
   const supabase = createClient();
@@ -28,12 +29,9 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
       .limit(8),
   ]);
 
-  const contactLinks = [
+  const directContact = [
     church.phone && { label: church.phone, href: `tel:${church.phone}` },
     church.email && { label: church.email, href: `mailto:${church.email}` },
-    church.website && { label: 'Website', href: church.website },
-    church.facebook && { label: 'Facebook', href: church.facebook },
-    church.youtube && { label: 'YouTube', href: church.youtube },
   ].filter(Boolean) as { label: string; href: string }[];
 
   return (
@@ -49,19 +47,18 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
         <ShareButton title={church.name} />
       </div>
 
-      {contactLinks.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-4 text-sm">
-          {contactLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              target={link.href.startsWith('http') ? '_blank' : undefined}
-              rel="noopener noreferrer"
-              className="text-sky-600 underline"
-            >
-              {link.label}
-            </a>
-          ))}
+      {(directContact.length > 0 || church.website || church.facebook || church.youtube) && (
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          {directContact.length > 0 && (
+            <div className="flex flex-wrap gap-4 text-sm">
+              {directContact.map((link) => (
+                <a key={link.href} href={link.href} className="text-sky-600 underline">
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          )}
+          <SocialLinks website={church.website} facebook={church.facebook} youtube={church.youtube} />
         </div>
       )}
 

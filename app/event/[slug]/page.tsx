@@ -4,6 +4,7 @@ import Image from 'next/image';
 import LiveCard from '@/components/LiveCard';
 import VideoCard from '@/components/VideoCard';
 import ShareButton from '@/components/ShareButton';
+import SocialLinks from '@/components/SocialLinks';
 
 export default async function EventPage({ params }: { params: { slug: string } }) {
   const supabase = createClient();
@@ -27,12 +28,6 @@ export default async function EventPage({ params }: { params: { slug: string } }
       .order('recorded_date', { ascending: false })
       .limit(8),
   ]);
-
-  const linkFields = [
-    event.website && { label: 'Website', href: event.website },
-    event.facebook && { label: 'Facebook', href: event.facebook },
-    event.youtube && { label: 'YouTube', href: event.youtube },
-  ].filter(Boolean) as { label: string; href: string }[];
 
   const dateRange = [event.start_date, event.end_date].filter(Boolean).join(' – ');
   const timeRange = [event.start_time, event.end_time].filter(Boolean).join(' – ');
@@ -65,21 +60,9 @@ export default async function EventPage({ params }: { params: { slug: string } }
         {event.languages && event.languages.length > 0 && <span>Languages: {event.languages.join(', ')}</span>}
       </div>
 
-      {linkFields.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-4 text-sm">
-          {linkFields.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sky-600 underline"
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
-      )}
+      <div className="mt-3">
+        <SocialLinks website={event.website} facebook={event.facebook} youtube={event.youtube} />
+      </div>
 
       {event.description && <p className="mt-4 text-slate-700">{event.description}</p>}
 
