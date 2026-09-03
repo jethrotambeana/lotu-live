@@ -24,6 +24,12 @@ export default async function ChurchFormPage({ searchParams }: { searchParams: {
           defaultValue={church?.slug}
         />
 
+        <Field
+          label="Logo/Image URL (optional — shown next to the church in listings and its profile page)"
+          name="logo_url"
+          defaultValue={church?.logo_url}
+        />
+
         <div>
           <label className="mb-1 block text-sm font-medium">Country</label>
           <select name="country_id" defaultValue={church?.country_id ?? ''} className="w-full rounded border border-slate-300 p-2">

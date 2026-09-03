@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
 import FilterBar from '@/components/FilterBar';
+import ChurchCard from '@/components/ChurchCard';
 
 export default async function ChurchesPage({
   searchParams,
@@ -22,7 +23,7 @@ export default async function ChurchesPage({
 
   let query = supabase
     .from('churches')
-    .select('slug, name, town, island_province, country_id, countries(name)');
+    .select('slug, name, town, island_province, country_id, countries(name), logo_url');
 
   if (searchParams.country) query = query.eq('country_id', searchParams.country);
   if (searchParams.island_province) query = query.eq('island_province', searchParams.island_province);
@@ -51,18 +52,15 @@ export default async function ChurchesPage({
       {churches && churches.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
           {churches.map((c: any) => (
-            <Link
+            <ChurchCard
               key={c.slug}
-              href={`/church/${c.slug}`}
-              className="block rounded border border-slate-200 p-4 hover:shadow-md transition-shadow"
-            >
-              <p className="font-medium">{c.name}</p>
-              <p className="text-sm text-slate-500">
-                {c.town}
-                {c.island_province ? `, ${c.island_province}` : ''}
-              </p>
-              {c.countries?.name && <p className="text-xs text-slate-400">{c.countries.name}</p>}
-            </Link>
+              slug={c.slug}
+              name={c.name}
+              town={c.town}
+              island_province={c.island_province}
+              countryName={c.countries?.name}
+              logo_url={c.logo_url}
+            />
           ))}
         </div>
       ) : (

@@ -27,6 +27,7 @@ create table churches (
   id uuid primary key default gen_random_uuid(),
   slug text unique not null,
   name text not null,
+  logo_url text,                       -- optional; shown in directory listings and profile
   country_id uuid references countries(id),
   island_province text,
   town text,

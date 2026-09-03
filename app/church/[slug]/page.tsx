@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabaseServer';
 import { notFound } from 'next/navigation';
+import Image from 'next/image';
 import LiveCard from '@/components/LiveCard';
 import VideoCard from '@/components/VideoCard';
 import EventCard from '@/components/EventCard';
@@ -44,12 +45,19 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">{church.name}</h1>
-          <p className="text-slate-500">
-            {[church.town, church.island_province, church.countries?.name].filter(Boolean).join(', ')}
-          </p>
-          {church.address && <p className="mt-1 text-sm text-slate-500">{church.address}</p>}
+        <div className="flex items-start gap-4">
+          {church.logo_url && (
+            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-slate-100">
+              <Image src={church.logo_url} alt={church.name} fill className="object-cover" />
+            </div>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold">{church.name}</h1>
+            <p className="text-slate-500">
+              {[church.town, church.island_province, church.countries?.name].filter(Boolean).join(', ')}
+            </p>
+            {church.address && <p className="mt-1 text-sm text-slate-500">{church.address}</p>}
+          </div>
         </div>
         <ShareButton title={church.name} />
       </div>
