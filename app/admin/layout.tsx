@@ -7,12 +7,13 @@ const ADMIN_NAV = [
   { href: '/admin/churches', label: 'Churches' },
   { href: '/admin/events', label: 'Events' },
   { href: '/admin/livestreams', label: 'Livestreams' },
+  { href: '/admin/videos', label: 'Videos' },
   { href: '/admin/messages', label: 'Messages' },
   { href: '/admin/submissions', label: 'Submissions' },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  await requireAdmin(); // redirects if not logged in / not an admin
+  await requireAdmin();
 
   return (
     <div className="mx-auto flex max-w-6xl gap-8 px-4 py-8">
