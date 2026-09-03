@@ -3,7 +3,13 @@
 import { createClient } from '@/lib/supabaseServer';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { isPlausibleProviderId, Provider } from '@/lib/embed';
+import {
+  isPlausibleProviderId,
+  Provider,
+  extractYouTubeId,
+  extractCloudflareId,
+  CLOUDFLARE_CUSTOMER_CODE,
+} from '@/lib/embed';
 
 function slugify(name: string) {
   return name
@@ -11,6 +17,26 @@ function slugify(name: string) {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
+}
+
+// Same auto-derivation approach used for the video catalogue's thumbnails.
+// YouTube and Cloudflare Stream both expose a stable, predictable thumbnail
+// URL for any given ID — no API key needed. Facebook and HLS don't have an
+// equivalent, so those stay manual (admin pastes a Preview Image URL).
+function deriveLivestreamThumbnail(provider: Provider, providerStreamId: string): string | null {
+  switch (provider) {
+    case 'youtube':
+      // i.ytimg.com (not img.youtube.com) — matches the domain already
+      // allowlisted in next.config.js. hqdefault is used over maxresdefault
+      // because it's guaranteed to exist for every video.
+      return `https://i.ytimg.com/vi/${extractYouTubeId(providerStreamId)}/hqdefault.jpg`;
+    case 'cloudflare':
+      return `https://customer-${CLOUDFLARE_CUSTOMER_CODE}.cloudflarestream.com/${extractCloudflareId(
+        providerStreamId
+      )}/thumbnails/thumbnail.jpg`;
+    default:
+      return null;
+  }
 }
 
 export async function saveLivestream(formData: FormData) {
@@ -28,6 +54,9 @@ export async function saveLivestream(formData: FormData) {
 
   const supabase = createClient();
 
+  const manualPreviewImage = (formData.get('preview_image') as string) || null;
+  const previewImage = manualPreviewImage || deriveLivestreamThumbnail(provider, providerStreamId);
+
   const record = {
     name: formData.get('name') as string,
     slug: (formData.get('slug') as string) || slugify(formData.get('name') as string),
@@ -36,7 +65,7 @@ export async function saveLivestream(formData: FormData) {
     event_id: (formData.get('event_id') as string) || null,
     provider,
     provider_stream_id: providerStreamId,
-    preview_image: (formData.get('preview_image') as string) || null,
+    preview_image: previewImage,
     country_id: (formData.get('country_id') as string) || null,
     island_province: (formData.get('island_province') as string) || null,
     location: (formData.get('location') as string) || null,

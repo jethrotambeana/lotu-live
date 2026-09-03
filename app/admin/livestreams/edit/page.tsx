@@ -84,7 +84,11 @@ export default async function LivestreamFormPage({ searchParams }: { searchParam
           placeholder="e.g. YouTube video ID, Cloudflare Live Input ID, or full .m3u8 URL"
         />
 
-        <Field label="Preview Image URL" name="preview_image" defaultValue={stream?.preview_image} />
+        <Field
+          label="Preview Image URL (auto-filled for YouTube and Cloudflare Stream if left blank — paste manually for Facebook or HLS)"
+          name="preview_image"
+          defaultValue={stream?.preview_image}
+        />
 
         <div>
           <label className="mb-1 block text-sm font-medium">Country</label>

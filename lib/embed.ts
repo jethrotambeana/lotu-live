@@ -9,12 +9,12 @@ export interface EmbedResult {
   src: string;
 }
 
-const CLOUDFLARE_CUSTOMER_CODE = process.env.NEXT_PUBLIC_CLOUDFLARE_CUSTOMER_CODE || '';
+// Exported (not just used internally) so admin actions.ts files — for both
+// livestreams and videos — can derive thumbnail URLs from the same ID the
+// player embed uses, instead of re-implementing this parsing per feature.
+export const CLOUDFLARE_CUSTOMER_CODE = process.env.NEXT_PUBLIC_CLOUDFLARE_CUSTOMER_CODE || '';
 
-// Extracts a bare YouTube video ID from a full URL, or returns the
-// input unchanged if it's already just an ID. Handles youtu.be, watch?v=,
-// embed/, and live/ URL formats.
-function extractYouTubeId(input: string): string {
+export function extractYouTubeId(input: string): string {
   const trimmed = input.trim();
   const patterns = [
     /(?:youtu\.be\/)([a-zA-Z0-9_-]{6,20})/,
@@ -26,20 +26,15 @@ function extractYouTubeId(input: string): string {
     const match = trimmed.match(pattern);
     if (match) return match[1];
   }
-  return trimmed; // already looks like a bare ID (or unrecognized — pass through)
+  return trimmed;
 }
 
-// Extracts a bare Cloudflare Stream video/Live Input ID from a full
-// customer-*.cloudflarestream.com URL, or returns the input unchanged
-// if it's already just an ID.
-function extractCloudflareId(input: string): string {
+export function extractCloudflareId(input: string): string {
   const trimmed = input.trim();
   const match = trimmed.match(/cloudflarestream\.com\/([a-zA-Z0-9]+)/);
   return match ? match[1] : trimmed;
 }
 
-// providerStreamId must already be validated as an ID/URL matching the
-// expected shape for its provider before being stored in the database.
 export function buildEmbed(provider: Provider, providerStreamId: string): EmbedResult {
   switch (provider) {
     case 'cloudflare':
@@ -64,15 +59,12 @@ export function buildEmbed(provider: Provider, providerStreamId: string): EmbedR
         )}&autoplay=false`,
       };
     case 'hls':
-      // providerStreamId is the approved HLS (.m3u8) URL itself.
       return { kind: 'hls', src: providerStreamId };
     default:
       throw new Error(`Unsupported provider: ${provider}`);
   }
 }
 
-// Basic shape validation to run before saving an admin-submitted ID.
-// This is a first line of defense, not a substitute for RLS/admin auth checks.
 export function isPlausibleProviderId(provider: Provider, value: string): boolean {
   if (!value || value.length > 500) return false;
   switch (provider) {

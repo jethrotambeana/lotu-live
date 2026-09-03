@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabaseServer';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { extractYouTubeId, extractCloudflareId, CLOUDFLARE_CUSTOMER_CODE } from '@/lib/embed';
 
 // videos.provider check constraint only allows these three (see sql/schema.sql) —
 // note this is a different set than livestreams' Provider type in lib/embed.ts
@@ -17,24 +18,6 @@ function slugify(name: string) {
     .replace(/(^-|-$)/g, '');
 }
 
-// Mirrors lib/embed.ts's extractYouTubeId (not exported from there, so
-// duplicated here) — pulls the bare video ID out of a full URL or accepts
-// one that's already bare.
-function extractYouTubeId(input: string): string {
-  const trimmed = input.trim();
-  const patterns = [
-    /(?:youtu\.be\/)([a-zA-Z0-9_-]{6,20})/,
-    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{6,20})/,
-    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{6,20})/,
-    /(?:youtube\.com\/live\/)([a-zA-Z0-9_-]{6,20})/,
-  ];
-  for (const pattern of patterns) {
-    const match = trimmed.match(pattern);
-    if (match) return match[1];
-  }
-  return trimmed;
-}
-
 // YouTube serves this thumbnail for every public video at a stable URL —
 // no API key needed. hqdefault is used (not maxresdefault) because it's
 // guaranteed to exist for every video; maxresdefault 404s on many older
@@ -43,17 +26,6 @@ function extractYouTubeId(input: string): string {
 function deriveYouTubeThumbnail(providerVideoId: string): string {
   return `https://i.ytimg.com/vi/${extractYouTubeId(providerVideoId)}/hqdefault.jpg`;
 }
-
-// Mirrors lib/embed.ts's extractCloudflareId (not exported from there, so
-// duplicated here) — pulls the bare video UID out of a full stream URL, or
-// accepts one that's already bare.
-function extractCloudflareId(input: string): string {
-  const trimmed = input.trim();
-  const match = trimmed.match(/cloudflarestream\.com\/([a-zA-Z0-9]+)/);
-  return match ? match[1] : trimmed;
-}
-
-const CLOUDFLARE_CUSTOMER_CODE = process.env.NEXT_PUBLIC_CLOUDFLARE_CUSTOMER_CODE || '';
 
 // Cloudflare Stream auto-generates a thumbnail at this stable path for every
 // uploaded video — same customer subdomain already used in lib/embed.ts for
