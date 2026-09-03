@@ -29,6 +29,15 @@ function extractYouTubeId(input: string): string {
   return trimmed; // already looks like a bare ID (or unrecognized — pass through)
 }
 
+// Extracts a bare Cloudflare Stream video/Live Input ID from a full
+// customer-*.cloudflarestream.com URL, or returns the input unchanged
+// if it's already just an ID.
+function extractCloudflareId(input: string): string {
+  const trimmed = input.trim();
+  const match = trimmed.match(/cloudflarestream\.com\/([a-zA-Z0-9]+)/);
+  return match ? match[1] : trimmed;
+}
+
 // providerStreamId must already be validated as an ID/URL matching the
 // expected shape for its provider before being stored in the database.
 export function buildEmbed(provider: Provider, providerStreamId: string): EmbedResult {
@@ -37,7 +46,7 @@ export function buildEmbed(provider: Provider, providerStreamId: string): EmbedR
       return {
         kind: 'iframe',
         src: `https://customer-${CLOUDFLARE_CUSTOMER_CODE}.cloudflarestream.com/${encodeURIComponent(
-          providerStreamId
+          extractCloudflareId(providerStreamId)
         )}/iframe`,
       };
     case 'youtube':
