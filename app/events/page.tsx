@@ -1,16 +1,48 @@
 import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
+import FilterBar from '@/components/FilterBar';
 
-export default async function EventsPage() {
+export default async function EventsPage({
+  searchParams,
+}: {
+  searchParams: { country?: string; status?: string };
+}) {
   const supabase = createClient();
-  const { data: events } = await supabase
+
+  const { data: countries } = await supabase.from('countries').select('id, name').order('name');
+
+  let query = supabase
     .from('events')
-    .select('slug, name, venue, town, start_date, end_date, status')
-    .order('start_date', { ascending: true });
+    .select('slug, name, venue, town, start_date, end_date, status, country_id');
+
+  if (searchParams.country) query = query.eq('country_id', searchParams.country);
+  if (searchParams.status) query = query.eq('status', searchParams.status);
+
+  const { data: events } = await query.order('start_date', { ascending: true });
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <h1 className="mb-6 text-2xl font-bold">Events</h1>
+
+      <FilterBar
+        filters={[
+          {
+            name: 'country',
+            label: 'All Countries',
+            options: (countries ?? []).map((c) => ({ value: c.id, label: c.name })),
+          },
+          {
+            name: 'status',
+            label: 'Any Status',
+            options: [
+              { value: 'upcoming', label: 'Upcoming' },
+              { value: 'current', label: 'Current' },
+              { value: 'completed', label: 'Completed' },
+            ],
+          },
+        ]}
+      />
+
       {events && events.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
           {events.map((e) => (
@@ -31,7 +63,7 @@ export default async function EventsPage() {
           ))}
         </div>
       ) : (
-        <p className="text-slate-500">No events scheduled yet — check back soon.</p>
+        <p className="text-slate-500">No events match these filters.</p>
       )}
     </div>
   );

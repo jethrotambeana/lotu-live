@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabaseServer';
 import LiveCard from '@/components/LiveCard';
+import FilterBar from '@/components/FilterBar';
 
 export default async function LiveDirectoryPage({
   searchParams,
@@ -7,19 +8,66 @@ export default async function LiveDirectoryPage({
   searchParams: { country?: string; type?: string; status?: string; language?: string };
 }) {
   const supabase = createClient();
-  let query = supabase.from('livestreams').select('slug, name, location, status, preview_image').eq('visible', true);
 
+  const [{ data: countries }, { data: languageRows }] = await Promise.all([
+    supabase.from('countries').select('id, name').order('name'),
+    supabase.from('livestreams').select('language').not('language', 'is', null),
+  ]);
+
+  const languages = Array.from(
+    new Set((languageRows ?? []).map((r: any) => r.language).filter(Boolean))
+  ).sort();
+
+  let query = supabase
+    .from('livestreams')
+    .select('slug, name, location, status, preview_image, country_id, type')
+    .eq('visible', true);
+
+  if (searchParams.country) query = query.eq('country_id', searchParams.country);
+  if (searchParams.type) query = query.eq('type', searchParams.type);
   if (searchParams.status) query = query.eq('status', searchParams.status);
   if (searchParams.language) query = query.eq('language', searchParams.language);
-  // country/type filters would join countries/categories by id in a full implementation
 
   const { data: streams } = await query.limit(50);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <h1 className="mb-6 text-2xl font-bold">Watch Live</h1>
-      {/* Filter bar: country, content type, status, language selects go here,
-          each reading/writing the corresponding searchParams key */}
+
+      <FilterBar
+        filters={[
+          {
+            name: 'country',
+            label: 'All Countries',
+            options: (countries ?? []).map((c) => ({ value: c.id, label: c.name })),
+          },
+          {
+            name: 'type',
+            label: 'Any Type',
+            options: [
+              { value: 'church', label: 'Church' },
+              { value: 'event', label: 'Event' },
+              { value: 'organisation', label: 'Organisation' },
+            ],
+          },
+          {
+            name: 'status',
+            label: 'Any Status',
+            options: [
+              { value: 'live', label: 'Live' },
+              { value: 'upcoming', label: 'Upcoming' },
+              { value: 'scheduled', label: 'Scheduled' },
+              { value: 'offline', label: 'Offline' },
+            ],
+          },
+          {
+            name: 'language',
+            label: 'All Languages',
+            options: languages.map((l) => ({ value: l, label: l })),
+          },
+        ]}
+      />
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
         {(streams ?? []).map((s) => (
           <LiveCard
@@ -32,6 +80,9 @@ export default async function LiveDirectoryPage({
           />
         ))}
       </div>
+      {(!streams || streams.length === 0) && (
+        <p className="text-slate-500">No broadcasts match these filters.</p>
+      )}
     </div>
   );
 }
