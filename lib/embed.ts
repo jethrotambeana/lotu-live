@@ -11,6 +11,24 @@ export interface EmbedResult {
 
 const CLOUDFLARE_CUSTOMER_CODE = process.env.NEXT_PUBLIC_CLOUDFLARE_CUSTOMER_CODE || '';
 
+// Extracts a bare YouTube video ID from a full URL, or returns the
+// input unchanged if it's already just an ID. Handles youtu.be, watch?v=,
+// embed/, and live/ URL formats.
+function extractYouTubeId(input: string): string {
+  const trimmed = input.trim();
+  const patterns = [
+    /(?:youtu\.be\/)([a-zA-Z0-9_-]{6,20})/,
+    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{6,20})/,
+    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{6,20})/,
+    /(?:youtube\.com\/live\/)([a-zA-Z0-9_-]{6,20})/,
+  ];
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    if (match) return match[1];
+  }
+  return trimmed; // already looks like a bare ID (or unrecognized — pass through)
+}
+
 // providerStreamId must already be validated as an ID/URL matching the
 // expected shape for its provider before being stored in the database.
 export function buildEmbed(provider: Provider, providerStreamId: string): EmbedResult {
@@ -25,7 +43,9 @@ export function buildEmbed(provider: Provider, providerStreamId: string): EmbedR
     case 'youtube':
       return {
         kind: 'iframe',
-        src: `https://www.youtube-nocookie.com/embed/${encodeURIComponent(providerStreamId)}?autoplay=0`,
+        src: `https://www.youtube-nocookie.com/embed/${encodeURIComponent(
+          extractYouTubeId(providerStreamId)
+        )}?autoplay=0`,
       };
     case 'facebook':
       return {
