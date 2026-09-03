@@ -48,22 +48,33 @@ export async function approveSubmission(formData: FormData) {
   // upgrades a plain 'viewer' — never silently overwrites someone who's
   // already an admin or already editing a different church, since that
   // could be a coincidental email match rather than the actual submitter.
-  if (submission.email) {
-    const { data: matchedProfile } = await supabase
+  const submissionEmail = submission.email?.trim();
+  if (submissionEmail) {
+    const { data: matchedProfile, error: lookupError } = await supabase
       .from('profiles')
-      .select('id, role, church_id')
-      .ilike('email', submission.email)
+      .select('id, role, church_id, email')
+      .ilike('email', submissionEmail)
       .maybeSingle();
 
-    if (matchedProfile && matchedProfile.role === 'viewer' && !matchedProfile.church_id) {
+    if (lookupError) {
+      console.error('Editor auto-link: profile lookup failed:', lookupError);
+    } else if (!matchedProfile) {
+      console.log(`Editor auto-link: no profile found matching email "${submissionEmail}".`);
+    } else if (matchedProfile.role !== 'viewer' || matchedProfile.church_id) {
+      console.log(
+        `Editor auto-link: skipped for "${submissionEmail}" — role is "${matchedProfile.role}", church_id is ${matchedProfile.church_id}. Only plain 'viewer' accounts with no existing church are auto-linked.`
+      );
+    } else {
       const { error: linkError } = await supabase
         .from('profiles')
         .update({ role: 'editor', church_id: newChurch.id })
         .eq('id', matchedProfile.id);
       if (linkError) {
-        console.error('Failed to auto-link editor:', linkError);
+        console.error('Editor auto-link: update failed:', linkError);
         // Non-fatal — the church was still created successfully; an admin
         // can link the editor manually via SQL if this step fails.
+      } else {
+        console.log(`Editor auto-link: linked "${submissionEmail}" to church ${newChurch.id}.`);
       }
     }
   }

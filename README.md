@@ -187,6 +187,14 @@ next.config.js                 Image domain allowlist (see §6)
   `previewImage` (camelCase). The mismatched prop was silently `undefined`,
   so the `<Image>` never rendered and no network request ever fired. Fixed
   by explicitly mapping `previewImage={s.preview_image}` on both pages.
+- **Admin → Submissions always showing "No submissions yet," even for
+  submissions that saved successfully**: the original RLS setup gave
+  `submissions` an INSERT policy (for the public `/submit` form) and an
+  UPDATE policy (for Approve/Reject), but never a SELECT policy. With RLS
+  enabled and no SELECT policy, Postgres denies all reads by default —
+  so no one, including admins, could ever read the table back, even
+  though every submission was actually being saved correctly the whole
+  time. Fixed by adding an admin-only SELECT policy.
 
 ## 7. Next Steps To Consider
 

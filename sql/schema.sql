@@ -219,8 +219,12 @@ create policy "public read churches" on churches for select using (true);
 create policy "public read events" on events for select using (true);
 create policy "public read visible livestreams" on livestreams for select using (visible = true);
 create policy "public read videos" on videos for select using (true);
--- submissions: insert-only from the public, no read/update
+-- submissions: insert-only from the public; admins can read (see below),
+-- no read access for anyone else.
 create policy "public insert submissions" on submissions for insert with check (true);
+create policy "admin read submissions" on submissions for select using (
+  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+);
 
 -- Admin write policies (requires profiles.role = 'admin')
 create policy "admin write churches" on churches for all using (
