@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
+import Image from 'next/image';
 import FilterBar from '@/components/FilterBar';
 
 export default async function EventsPage({
@@ -13,7 +14,7 @@ export default async function EventsPage({
 
   let query = supabase
     .from('events')
-    .select('slug, name, venue, town, start_date, end_date, status, country_id');
+    .select('slug, name, venue, town, start_date, end_date, status, country_id, poster_url');
 
   if (searchParams.country) query = query.eq('country_id', searchParams.country);
   if (searchParams.status) query = query.eq('status', searchParams.status);
@@ -49,16 +50,21 @@ export default async function EventsPage({
             <Link
               key={e.slug}
               href={`/event/${e.slug}`}
-              className="block rounded border border-slate-200 p-4 hover:shadow-md transition-shadow"
+              className="block overflow-hidden rounded border border-slate-200 hover:shadow-md transition-shadow"
             >
-              <span className="text-xs font-semibold uppercase text-sky-600">{e.status}</span>
-              <p className="font-medium">{e.name}</p>
-              <p className="text-sm text-slate-500">
-                {e.venue}, {e.town}
-              </p>
-              <p className="text-xs text-slate-400">
-                {e.start_date} – {e.end_date}
-              </p>
+              <div className="relative aspect-video bg-slate-100">
+                {e.poster_url && <Image src={e.poster_url} alt={e.name} fill className="object-cover" />}
+              </div>
+              <div className="p-4">
+                <span className="text-xs font-semibold uppercase text-sky-600">{e.status}</span>
+                <p className="font-medium">{e.name}</p>
+                <p className="text-sm text-slate-500">
+                  {e.venue}, {e.town}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {e.start_date} – {e.end_date}
+                </p>
+              </div>
             </Link>
           ))}
         </div>
