@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabaseServer';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import LiveCard from '@/components/LiveCard';
 import VideoCard from '@/components/VideoCard';
 import ShareButton from '@/components/ShareButton';
@@ -10,7 +11,7 @@ export default async function EventPage({ params }: { params: { slug: string } }
   const supabase = createClient();
   const { data: event } = await supabase
     .from('events')
-    .select('*, countries(name)')
+    .select('*, countries(name), churches(name, slug)')
     .eq('slug', params.slug)
     .single();
   if (!event) return notFound();
@@ -49,7 +50,16 @@ export default async function EventPage({ params }: { params: { slug: string } }
               .filter(Boolean)
               .join(', ')}
           </p>
-          {event.hosted_by && <p className="text-sm text-slate-500">Hosted by {event.hosted_by}</p>}
+          {event.churches ? (
+            <p className="text-sm text-slate-500">
+              Hosted by{' '}
+              <Link href={`/church/${event.churches.slug}`} className="text-sky-600 underline">
+                {event.churches.name}
+              </Link>
+            </p>
+          ) : (
+            event.hosted_by && <p className="text-sm text-slate-500">Hosted by {event.hosted_by}</p>
+          )}
         </div>
         <ShareButton title={event.name} />
       </div>

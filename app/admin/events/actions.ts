@@ -19,6 +19,7 @@ export async function saveEvent(formData: FormData) {
   const record = {
     name: formData.get('name') as string,
     slug: (formData.get('slug') as string) || slugify(formData.get('name') as string),
+    host_church_id: (formData.get('host_church_id') as string) || null,
     hosted_by: (formData.get('hosted_by') as string) || null,
     country_id: (formData.get('country_id') as string) || null,
     description: (formData.get('description') as string) || null,

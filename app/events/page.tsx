@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabaseServer';
-import Link from 'next/link';
-import Image from 'next/image';
+import EventCard from '@/components/EventCard';
 import FilterBar from '@/components/FilterBar';
 
 export default async function EventsPage({
@@ -47,25 +46,17 @@ export default async function EventsPage({
       {events && events.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
           {events.map((e) => (
-            <Link
+            <EventCard
               key={e.slug}
-              href={`/event/${e.slug}`}
-              className="block overflow-hidden rounded border border-slate-200 hover:shadow-md transition-shadow"
-            >
-              <div className="relative aspect-video bg-slate-100">
-                {e.poster_url && <Image src={e.poster_url} alt={e.name} fill className="object-cover" />}
-              </div>
-              <div className="p-4">
-                <span className="text-xs font-semibold uppercase text-sky-600">{e.status}</span>
-                <p className="font-medium">{e.name}</p>
-                <p className="text-sm text-slate-500">
-                  {e.venue}, {e.town}
-                </p>
-                <p className="text-xs text-slate-400">
-                  {e.start_date} – {e.end_date}
-                </p>
-              </div>
-            </Link>
+              slug={e.slug}
+              name={e.name}
+              venue={e.venue}
+              town={e.town}
+              start_date={e.start_date}
+              end_date={e.end_date}
+              status={e.status}
+              poster_url={e.poster_url}
+            />
           ))}
         </div>
       ) : (

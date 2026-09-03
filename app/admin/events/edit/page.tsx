@@ -3,7 +3,10 @@ import { saveEvent } from '../actions';
 
 export default async function EventFormPage({ searchParams }: { searchParams: { id?: string } }) {
   const supabase = createClient();
-  const { data: countries } = await supabase.from('countries').select('id, name').order('name');
+  const [{ data: countries }, { data: churches }] = await Promise.all([
+    supabase.from('countries').select('id, name').order('name'),
+    supabase.from('churches').select('id, name').order('name'),
+  ]);
 
   let event: any = null;
   if (searchParams.id) {
@@ -19,7 +22,32 @@ export default async function EventFormPage({ searchParams }: { searchParams: { 
 
         <Field label="Event Name" name="name" defaultValue={event?.name} required />
         <Field label="Slug (leave blank to auto-generate)" name="slug" defaultValue={event?.slug} />
-        <Field label="Hosted By" name="hosted_by" defaultValue={event?.hosted_by} />
+
+        <div>
+          <label className="mb-1 block text-sm font-medium">Hosted by Church (optional)</label>
+          <select
+            name="host_church_id"
+            defaultValue={event?.host_church_id ?? ''}
+            className="w-full rounded border border-slate-300 p-2"
+          >
+            <option value="">— None —</option>
+            {(churches ?? []).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-500">
+            When set, the public event page links to this church's profile, and the event shows up
+            under that church's "Upcoming Events."
+          </p>
+        </div>
+
+        <Field
+          label="Hosted By (text label — used when the host isn't a registered church, e.g. a conference or outside organisation)"
+          name="hosted_by"
+          defaultValue={event?.hosted_by}
+        />
 
         <div>
           <label className="mb-1 block text-sm font-medium">Country</label>

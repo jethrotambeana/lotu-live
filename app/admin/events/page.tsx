@@ -6,7 +6,7 @@ export default async function AdminEventsPage() {
   const supabase = createClient();
   const { data: events } = await supabase
     .from('events')
-    .select('id, name, status, start_date, town')
+    .select('id, name, status, start_date, town, churches(name)')
     .order('start_date', { ascending: true });
 
   return (
@@ -18,13 +18,14 @@ export default async function AdminEventsPage() {
         </Link>
       </div>
       <div className="space-y-2">
-        {(events ?? []).map((e) => (
+        {(events ?? []).map((e: any) => (
           <div key={e.id} className="flex items-center justify-between rounded border border-slate-200 p-3">
             <div>
               <span className="mr-2 text-xs font-semibold uppercase text-sky-600">{e.status}</span>
               <span className="font-medium">{e.name}</span>
               <p className="text-sm text-slate-500">
                 {e.town} — {e.start_date}
+                {e.churches?.name ? ` · Hosted by ${e.churches.name}` : ''}
               </p>
             </div>
             <div className="flex gap-2">

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabaseServer';
 import { notFound } from 'next/navigation';
 import LiveCard from '@/components/LiveCard';
 import VideoCard from '@/components/VideoCard';
+import EventCard from '@/components/EventCard';
 import ShareButton from '@/components/ShareButton';
 import SocialLinks from '@/components/SocialLinks';
 
@@ -14,7 +15,7 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
     .single();
   if (!church) return notFound();
 
-  const [{ data: liveNow }, { data: videos }] = await Promise.all([
+  const [{ data: liveNow }, { data: videos }, { data: events }] = await Promise.all([
     supabase
       .from('livestreams')
       .select('slug, name, location, status, preview_image')
@@ -27,6 +28,12 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
       .eq('church_id', church.id)
       .order('recorded_date', { ascending: false })
       .limit(8),
+    supabase
+      .from('events')
+      .select('slug, name, venue, town, start_date, end_date, status, poster_url')
+      .eq('host_church_id', church.id)
+      .in('status', ['upcoming', 'current'])
+      .order('start_date', { ascending: true }),
   ]);
 
   const directContact = [
@@ -81,6 +88,27 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
                 location={s.location}
                 status={s.status as any}
                 previewImage={s.preview_image}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {events && events.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 font-semibold">Upcoming Events</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {events.map((e) => (
+              <EventCard
+                key={e.slug}
+                slug={e.slug}
+                name={e.name}
+                venue={e.venue}
+                town={e.town}
+                start_date={e.start_date}
+                end_date={e.end_date}
+                status={e.status}
+                poster_url={e.poster_url}
               />
             ))}
           </div>

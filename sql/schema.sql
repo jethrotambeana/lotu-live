@@ -45,7 +45,13 @@ create table events (
   id uuid primary key default gen_random_uuid(),
   slug text unique not null,
   name text not null,
-  hosted_by text,
+  hosted_by text,                      -- free-text label; used when the host
+                                        -- isn't a registered church (e.g. an
+                                        -- outside organisation or conference)
+  host_church_id uuid references churches(id), -- proper FK when the host IS
+                                        -- a registered church; the public
+                                        -- site prefers this over hosted_by
+                                        -- when both are present
   country_id uuid references countries(id),
   description text,
   venue text,
@@ -167,6 +173,7 @@ create index on livestreams (country_id);
 create index on videos (recorded_date desc);
 create index on churches (country_id);
 create index on events (start_date);
+create index on events (host_church_id);
 
 -- Basic full-text search (Phase 1, per doc section 20)
 alter table churches add column search_vector tsvector
