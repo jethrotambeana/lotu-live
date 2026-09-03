@@ -59,7 +59,14 @@ export default async function HomePage() {
         {liveNow && liveNow.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             {liveNow.map((s) => (
-              <LiveCard key={s.slug} {...s} status="live" />
+              <LiveCard
+                key={s.slug}
+                slug={s.slug}
+                name={s.name}
+                location={s.location}
+                status="live"
+                previewImage={s.preview_image}
+              />
             ))}
           </div>
         ) : (
@@ -73,7 +80,14 @@ export default async function HomePage() {
         {comingUp && comingUp.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             {comingUp.map((s) => (
-              <LiveCard key={s.slug} {...s} status={s.status as 'upcoming' | 'scheduled'} />
+              <LiveCard
+                key={s.slug}
+                slug={s.slug}
+                name={s.name}
+                location={s.location}
+                status={s.status as 'upcoming' | 'scheduled'}
+                previewImage={s.preview_image}
+              />
             ))}
           </div>
         ) : (
