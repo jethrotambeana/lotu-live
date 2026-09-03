@@ -17,18 +17,45 @@ export default function LoginPage() {
     setError(null);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
+
     if (error) {
+      setLoading(false);
       setError(error.message);
       return;
     }
-    router.push('/admin');
+
+    // Route by role rather than always pushing to /admin — that previously
+    // sent every non-admin (including the new editor role) straight into
+    // requireAdmin's redirect-to-homepage fallback, bypassing /manage
+    // entirely. "read own profile" RLS lets any signed-in user read their
+    // own row here, regardless of role.
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    let destination = '/';
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, church_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.role === 'admin') {
+        destination = '/admin';
+      } else if (profile?.role === 'editor' && profile?.church_id) {
+        destination = '/manage';
+      }
+    }
+
+    setLoading(false);
+    router.push(destination);
     router.refresh();
   }
 
   return (
     <div className="mx-auto max-w-sm px-4 py-16">
-      <h1 className="mb-6 text-2xl font-bold">Admin Login</h1>
+      <h1 className="mb-6 text-2xl font-bold">Login</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium">Email</label>
