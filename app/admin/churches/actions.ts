@@ -19,6 +19,7 @@ export async function saveChurch(formData: FormData) {
   const record = {
     name: formData.get('name') as string,
     slug: (formData.get('slug') as string) || slugify(formData.get('name') as string),
+    logo_url: (formData.get('logo_url') as string) || null,
     country_id: (formData.get('country_id') as string) || null,
     island_province: (formData.get('island_province') as string) || null,
     town: (formData.get('town') as string) || null,
@@ -33,9 +34,17 @@ export async function saveChurch(formData: FormData) {
   };
 
   if (id) {
-    await supabase.from('churches').update(record).eq('id', id);
+    const { error } = await supabase.from('churches').update(record).eq('id', id);
+    if (error) {
+      console.error('Failed to update church:', error);
+      throw new Error(`Failed to save church: ${error.message}`);
+    }
   } else {
-    await supabase.from('churches').insert(record);
+    const { error } = await supabase.from('churches').insert(record);
+    if (error) {
+      console.error('Failed to create church:', error);
+      throw new Error(`Failed to save church: ${error.message}`);
+    }
   }
 
   revalidatePath('/admin/churches');
