@@ -93,7 +93,11 @@ export default async function VideoFormPage({ searchParams }: { searchParams: { 
           placeholder="e.g. YouTube video ID, Cloudflare video UID, or Cloudinary public ID"
         />
 
-        <Field label="Thumbnail URL" name="thumbnail" defaultValue={video?.thumbnail} />
+        <Field
+          label="Thumbnail URL (optional — auto-filled from YouTube if left blank)"
+          name="thumbnail"
+          defaultValue={video?.thumbnail}
+        />
         <Field label="Language" name="language" defaultValue={video?.language} />
 
         <div>

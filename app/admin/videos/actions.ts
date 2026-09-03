@@ -17,6 +17,32 @@ function slugify(name: string) {
     .replace(/(^-|-$)/g, '');
 }
 
+// Mirrors lib/embed.ts's extractYouTubeId (not exported from there, so
+// duplicated here) — pulls the bare video ID out of a full URL or accepts
+// one that's already bare.
+function extractYouTubeId(input: string): string {
+  const trimmed = input.trim();
+  const patterns = [
+    /(?:youtu\.be\/)([a-zA-Z0-9_-]{6,20})/,
+    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{6,20})/,
+    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{6,20})/,
+    /(?:youtube\.com\/live\/)([a-zA-Z0-9_-]{6,20})/,
+  ];
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    if (match) return match[1];
+  }
+  return trimmed;
+}
+
+// YouTube serves this thumbnail for every public video at a stable URL —
+// no API key needed. hqdefault is used (not maxresdefault) because it's
+// guaranteed to exist for every video; maxresdefault 404s on many older
+// or lower-resolution uploads.
+function deriveYouTubeThumbnail(providerVideoId: string): string {
+  return `https://img.youtube.com/vi/${extractYouTubeId(providerVideoId)}/hqdefault.jpg`;
+}
+
 // Same soft-check pattern as lib/embed.ts's isPlausibleProviderId, extended to
 // cover 'cloudinary' which that helper doesn't know about. This never blocks
 // saving — see the note in lib/embed.ts about why the real protection is
@@ -48,6 +74,10 @@ export async function saveVideo(formData: FormData) {
 
   const supabase = createClient();
 
+  const manualThumbnail = (formData.get('thumbnail') as string) || null;
+  const thumbnail =
+    manualThumbnail || (provider === 'youtube' ? deriveYouTubeThumbnail(providerVideoId) : null);
+
   const record = {
     title,
     slug: (formData.get('slug') as string) || slugify(title),
@@ -57,7 +87,7 @@ export async function saveVideo(formData: FormData) {
     series: (formData.get('series') as string) || null,
     provider,
     provider_video_id: providerVideoId,
-    thumbnail: (formData.get('thumbnail') as string) || null,
+    thumbnail,
     language: (formData.get('language') as string) || null,
     description: (formData.get('description') as string) || null,
     recorded_date: (formData.get('recorded_date') as string) || null,
