@@ -22,7 +22,14 @@ export default async function LiveDirectoryPage({
           each reading/writing the corresponding searchParams key */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
         {(streams ?? []).map((s) => (
-          <LiveCard key={s.slug} {...s} status={s.status as any} />
+          <LiveCard
+            key={s.slug}
+            slug={s.slug}
+            name={s.name}
+            location={s.location}
+            status={s.status as any}
+            previewImage={s.preview_image}
+          />
         ))}
       </div>
     </div>
