@@ -94,7 +94,7 @@ export default async function VideoFormPage({ searchParams }: { searchParams: { 
         />
 
         <Field
-          label="Thumbnail URL (optional — auto-filled from YouTube if left blank)"
+          label="Thumbnail URL (auto-filled for YouTube and Cloudflare Stream if left blank — paste manually for Cloudinary or Cloudflare Images)"
           name="thumbnail"
           defaultValue={video?.thumbnail}
         />

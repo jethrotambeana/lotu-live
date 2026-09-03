@@ -6,6 +6,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'i.ytimg.com' },
       { protocol: 'https', hostname: '**.supabase.co' },
       { protocol: 'https', hostname: 'res.cloudinary.com' },
+      { protocol: 'https', hostname: 'imagedelivery.net' },
     ],
   },
 };

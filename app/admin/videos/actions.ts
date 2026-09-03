@@ -38,9 +38,30 @@ function extractYouTubeId(input: string): string {
 // YouTube serves this thumbnail for every public video at a stable URL —
 // no API key needed. hqdefault is used (not maxresdefault) because it's
 // guaranteed to exist for every video; maxresdefault 404s on many older
-// or lower-resolution uploads.
+// or lower-resolution uploads. i.ytimg.com (not img.youtube.com) is used
+// because that's the hostname already allowlisted in next.config.js.
 function deriveYouTubeThumbnail(providerVideoId: string): string {
-  return `https://img.youtube.com/vi/${extractYouTubeId(providerVideoId)}/hqdefault.jpg`;
+  return `https://i.ytimg.com/vi/${extractYouTubeId(providerVideoId)}/hqdefault.jpg`;
+}
+
+// Mirrors lib/embed.ts's extractCloudflareId (not exported from there, so
+// duplicated here) — pulls the bare video UID out of a full stream URL, or
+// accepts one that's already bare.
+function extractCloudflareId(input: string): string {
+  const trimmed = input.trim();
+  const match = trimmed.match(/cloudflarestream\.com\/([a-zA-Z0-9]+)/);
+  return match ? match[1] : trimmed;
+}
+
+const CLOUDFLARE_CUSTOMER_CODE = process.env.NEXT_PUBLIC_CLOUDFLARE_CUSTOMER_CODE || '';
+
+// Cloudflare Stream auto-generates a thumbnail at this stable path for every
+// uploaded video — same customer subdomain already used in lib/embed.ts for
+// the player, and already allowlisted in next.config.js (**.cloudflarestream.com).
+function deriveCloudflareThumbnail(providerVideoId: string): string {
+  return `https://customer-${CLOUDFLARE_CUSTOMER_CODE}.cloudflarestream.com/${extractCloudflareId(
+    providerVideoId
+  )}/thumbnails/thumbnail.jpg`;
 }
 
 // Same soft-check pattern as lib/embed.ts's isPlausibleProviderId, extended to
@@ -75,8 +96,15 @@ export async function saveVideo(formData: FormData) {
   const supabase = createClient();
 
   const manualThumbnail = (formData.get('thumbnail') as string) || null;
-  const thumbnail =
-    manualThumbnail || (provider === 'youtube' ? deriveYouTubeThumbnail(providerVideoId) : null);
+  let thumbnail = manualThumbnail;
+  if (!thumbnail) {
+    if (provider === 'youtube') {
+      thumbnail = deriveYouTubeThumbnail(providerVideoId);
+    } else if (provider === 'cloudflare') {
+      thumbnail = deriveCloudflareThumbnail(providerVideoId);
+    }
+    // cloudinary: no auto-derivation yet — leave null, admin pastes manually.
+  }
 
   const record = {
     title,
