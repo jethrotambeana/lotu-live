@@ -17,10 +17,25 @@ export interface SocialLinksProps {
 
 export default function SocialLinks({ website, facebook, youtube }: SocialLinksProps) {
   const links = [
-    normalizeUrl(website) && { href: normalizeUrl(website)!, label: 'Website', icon: <GlobeIcon /> },
-    normalizeUrl(facebook) && { href: normalizeUrl(facebook)!, label: 'Facebook', icon: <FacebookIcon /> },
-    normalizeUrl(youtube) && { href: normalizeUrl(youtube)!, label: 'YouTube', icon: <YouTubeIcon /> },
-  ].filter(Boolean) as { href: string; label: string; icon: JSX.Element }[];
+    normalizeUrl(website) && {
+      href: normalizeUrl(website)!,
+      label: 'Website',
+      icon: <GlobeIcon />,
+      color: '#475569', // slate-600 — neutral, not a brand color
+    },
+    normalizeUrl(facebook) && {
+      href: normalizeUrl(facebook)!,
+      label: 'Facebook',
+      icon: <FacebookIcon />,
+      color: '#1877F2', // Facebook brand blue
+    },
+    normalizeUrl(youtube) && {
+      href: normalizeUrl(youtube)!,
+      label: 'YouTube',
+      icon: <YouTubeIcon />,
+      color: '#FF0000', // YouTube brand red
+    },
+  ].filter(Boolean) as { href: string; label: string; icon: JSX.Element; color: string }[];
 
   if (links.length === 0) return null;
 
@@ -34,7 +49,8 @@ export default function SocialLinks({ website, facebook, youtube }: SocialLinksP
           rel="noopener noreferrer"
           aria-label={link.label}
           title={link.label}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 hover:text-sky-600"
+          style={{ color: link.color }}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 transition-opacity hover:opacity-75"
         >
           {link.icon}
         </a>
