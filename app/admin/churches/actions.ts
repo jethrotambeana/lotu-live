@@ -78,11 +78,13 @@ export async function deleteChurch(formData: FormData) {
   if (blockers.length > 0) {
     const message = `Can't delete this church — it still has ${blockers.join(
       ', '
-    )} attached. Delete/reassign the livestreams, events, and videos first. For a linked editor account, run in Supabase SQL Editor: update profiles set role = 'viewer', church_id = null where church_id = '${id}';`;
+    )} attached. Delete/reassign the livestreams, events, and videos first.${
+      editorCount ? ' You can unlink the editor account below.' : ''
+    }`;
     // redirect() (unlike throw new Error()) is NOT swallowed by Next's
     // production error handling — it's how the message actually reaches
     // the admin instead of a generic "Application error" page.
-    redirect(`/admin/churches?error=${encodeURIComponent(message)}`);
+    redirect(`/admin/churches?error=${encodeURIComponent(message)}&blockedId=${id}`);
   }
 
   const { error } = await supabase.from('churches').delete().eq('id', id);
@@ -93,4 +95,21 @@ export async function deleteChurch(formData: FormData) {
 
   revalidatePath('/admin/churches');
   revalidatePath('/churches');
+}
+
+export async function unlinkChurchEditors(formData: FormData) {
+  const churchId = formData.get('churchId') as string;
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('profiles')
+    .update({ role: 'viewer', church_id: null })
+    .eq('church_id', churchId);
+
+  if (error) {
+    console.error('Failed to unlink church editors:', error);
+    redirect(`/admin/churches?error=${encodeURIComponent(`Failed to unlink editor: ${error.message}`)}`);
+  }
+
+  revalidatePath('/admin/churches');
+  redirect('/admin/churches');
 }

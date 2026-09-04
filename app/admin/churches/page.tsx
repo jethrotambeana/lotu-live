@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
 import Image from 'next/image';
-import { deleteChurch } from './actions';
+import { deleteChurch, unlinkChurchEditors } from './actions';
 
 export default async function AdminChurchesPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; blockedId?: string };
 }) {
   const supabase = createClient();
   const { data: churches } = await supabase
@@ -24,7 +24,15 @@ export default async function AdminChurchesPage({
       </div>
       {searchParams.error && (
         <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {searchParams.error}
+          <p>{searchParams.error}</p>
+          {searchParams.blockedId && (
+            <form action={unlinkChurchEditors} className="mt-2">
+              <input type="hidden" name="churchId" value={searchParams.blockedId} />
+              <button className="rounded border border-red-300 bg-white px-3 py-1 text-sm text-red-700 hover:bg-red-100">
+                Unlink Editor Account(s)
+              </button>
+            </form>
+          )}
         </div>
       )}
       <div className="space-y-2">
