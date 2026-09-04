@@ -34,6 +34,10 @@ export async function saveMyEvent(formData: FormData) {
     youtube: (formData.get('youtube') as string) || null,
     poster_url: (formData.get('poster_url') as string) || null,
     status: (formData.get('status') as string) || 'upcoming',
+    // Every editor save — new or edited — requires admin re-approval before
+    // it's visible on the public site, even if this event was previously
+    // approved. Only /admin can flip this back to true.
+    approved: false,
   };
 
   let query;

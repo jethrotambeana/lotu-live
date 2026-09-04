@@ -35,6 +35,7 @@ export async function saveEvent(formData: FormData) {
     youtube: (formData.get('youtube') as string) || null,
     poster_url: (formData.get('poster_url') as string) || null,
     status: (formData.get('status') as string) || 'upcoming',
+    approved: formData.get('approved') === 'on',
   };
 
   if (id) {
@@ -52,6 +53,15 @@ export async function deleteEvent(formData: FormData) {
   const id = formData.get('id') as string;
   const supabase = createClient();
   await supabase.from('events').delete().eq('id', id);
+  revalidatePath('/admin/events');
+  revalidatePath('/events');
+}
+
+export async function toggleEventApproved(formData: FormData) {
+  const id = formData.get('id') as string;
+  const approved = formData.get('approved') === 'true';
+  const supabase = createClient();
+  await supabase.from('events').update({ approved: !approved }).eq('id', id);
   revalidatePath('/admin/events');
   revalidatePath('/events');
 }

@@ -140,6 +140,11 @@ export default async function VideoFormPage({ searchParams }: { searchParams: { 
           </div>
         </div>
 
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="approved" defaultChecked={video?.approved ?? true} />
+          Approved (visible on the public site — uncheck to hide while under review)
+        </label>
+
         <button type="submit" className="rounded bg-sky-600 px-5 py-2 text-white">
           {video ? 'Save Changes' : 'Create Video'}
         </button>

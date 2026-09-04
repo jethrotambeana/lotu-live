@@ -6,7 +6,7 @@ export default async function ManageEventsPage() {
   const { supabase, churchId } = await requireChurchEditor();
   const { data: events } = await supabase
     .from('events')
-    .select('id, name, status, start_date, town')
+    .select('id, name, status, start_date, town, approved')
     .eq('host_church_id', churchId)
     .order('start_date', { ascending: true });
 
@@ -18,11 +18,19 @@ export default async function ManageEventsPage() {
           + Add Event
         </Link>
       </div>
+      <p className="mb-4 text-sm text-slate-500">
+        New events and any edits go live only after an admin approves them.
+      </p>
       <div className="space-y-2">
-        {(events ?? []).map((e) => (
+        {(events ?? []).map((e: any) => (
           <div key={e.id} className="flex items-center justify-between rounded border border-slate-200 p-3">
             <div>
               <span className="mr-2 text-xs font-semibold uppercase text-sky-600">{e.status}</span>
+              {!e.approved && (
+                <span className="mr-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold uppercase text-amber-700">
+                  Pending Approval
+                </span>
+              )}
               <span className="font-medium">{e.name}</span>
               <p className="text-sm text-slate-500">
                 {e.town} — {e.start_date}
@@ -46,3 +54,4 @@ export default async function ManageEventsPage() {
     </div>
   );
 }
+

@@ -4,7 +4,6 @@ import LogoutButton from '@/components/LogoutButton';
 
 const MANAGE_NAV = [
   { href: '/manage', label: 'Church Profile' },
-  { href: '/manage/livestreams', label: 'Livestreams' },
   { href: '/manage/events', label: 'Events' },
   { href: '/manage/videos', label: 'Videos' },
 ];

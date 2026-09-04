@@ -83,6 +83,11 @@ export default async function EventFormPage({ searchParams }: { searchParams: { 
           </select>
         </div>
 
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="approved" defaultChecked={event?.approved ?? true} />
+          Approved (visible on the public site — uncheck to hide while under review)
+        </label>
+
         <Field label="Website" name="website" defaultValue={event?.website} />
         <Field label="Facebook" name="facebook" defaultValue={event?.facebook} />
         <Field label="YouTube" name="youtube" defaultValue={event?.youtube} />

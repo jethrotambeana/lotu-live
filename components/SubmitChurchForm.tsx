@@ -17,8 +17,6 @@ export default function SubmitChurchForm() {
     website: '',
     facebook: '',
     youtube: '',
-    streaming_platform: '',
-    livestream_ref: '',
   });
 
   useEffect(() => {
@@ -41,7 +39,8 @@ export default function SubmitChurchForm() {
   if (status === 'sent') {
     return (
       <p className="rounded bg-green-50 p-4 text-green-700">
-        Thanks! Your church has been submitted for review. We'll be in touch once it's approved.
+        Thanks! Your church has been submitted for review. Once approved, we'll follow up
+        separately about setting up your livestream.
       </p>
     );
   }
@@ -85,8 +84,10 @@ export default function SubmitChurchForm() {
       {field('website', 'Website')}
       {field('facebook', 'Facebook')}
       {field('youtube', 'YouTube')}
-      {field('streaming_platform', 'Streaming Platform (e.g. YouTube, Cloudflare, HLS)')}
-      {field('livestream_ref', 'Livestream URL or Provider ID')}
+      <p className="text-xs text-slate-500">
+        Livestream setup happens after your church is approved — we'll reach out separately
+        with streaming details, so there's no need to include that here.
+      </p>
       <button
         type="submit"
         disabled={status === 'submitting'}

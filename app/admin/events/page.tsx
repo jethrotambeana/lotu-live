@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
-import { deleteEvent } from './actions';
+import { deleteEvent, toggleEventApproved } from './actions';
 
 export default async function AdminEventsPage() {
   const supabase = createClient();
   const { data: events } = await supabase
     .from('events')
-    .select('id, name, status, start_date, town, churches(name)')
+    .select('id, name, status, start_date, town, churches(name), approved')
     .order('start_date', { ascending: true });
 
   return (
@@ -22,13 +22,23 @@ export default async function AdminEventsPage() {
           <div key={e.id} className="flex items-center justify-between rounded border border-slate-200 p-3">
             <div>
               <span className="mr-2 text-xs font-semibold uppercase text-sky-600">{e.status}</span>
+              {!e.approved && (
+                <span className="mr-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold uppercase text-amber-700">
+                  Pending Approval
+                </span>
+              )}
               <span className="font-medium">{e.name}</span>
               <p className="text-sm text-slate-500">
                 {e.town} — {e.start_date}
                 {e.churches?.name ? ` · Hosted by ${e.churches.name}` : ''}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3">
+              <form action={toggleEventApproved}>
+                <input type="hidden" name="id" value={e.id} />
+                <input type="hidden" name="approved" value={String(e.approved)} />
+                <button className="text-sm underline">{e.approved ? 'Unapprove' : 'Approve'}</button>
+              </form>
               <Link href={`/admin/events/edit?id=${e.id}`} className="text-sm text-sky-600 underline">
                 Edit
               </Link>
@@ -46,3 +56,4 @@ export default async function AdminEventsPage() {
     </div>
   );
 }
+

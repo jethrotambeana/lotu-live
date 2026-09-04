@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
-import { deleteVideo } from './actions';
+import { deleteVideo, toggleVideoApproved } from './actions';
 
 export default async function AdminVideosPage() {
   const supabase = createClient();
   const { data: videos } = await supabase
     .from('videos')
-    .select('id, title, provider, speaker, series, recorded_date, churches(name), events(name)')
+    .select('id, title, provider, speaker, series, recorded_date, churches(name), events(name), approved')
     .order('recorded_date', { ascending: false, nullsFirst: false });
 
   return (
@@ -21,6 +21,11 @@ export default async function AdminVideosPage() {
         {(videos ?? []).map((v: any) => (
           <div key={v.id} className="flex items-center justify-between rounded border border-slate-200 p-3">
             <div>
+              {!v.approved && (
+                <span className="mr-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold uppercase text-amber-700">
+                  Pending Approval
+                </span>
+              )}
               <span className="font-medium">{v.title}</span>
               <p className="text-sm text-slate-500">
                 {v.provider}
@@ -32,6 +37,11 @@ export default async function AdminVideosPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
+              <form action={toggleVideoApproved}>
+                <input type="hidden" name="id" value={v.id} />
+                <input type="hidden" name="approved" value={String(v.approved)} />
+                <button className="text-sm underline">{v.approved ? 'Unapprove' : 'Approve'}</button>
+              </form>
               <Link href={`/admin/videos/edit?id=${v.id}`} className="text-sm text-sky-600 underline">
                 Edit
               </Link>
@@ -49,3 +59,4 @@ export default async function AdminVideosPage() {
     </div>
   );
 }
+

@@ -73,6 +73,7 @@ export async function saveVideo(formData: FormData) {
     language: (formData.get('language') as string) || null,
     description: (formData.get('description') as string) || null,
     recorded_date: (formData.get('recorded_date') as string) || null,
+    approved: formData.get('approved') === 'on',
   };
 
   let videoId = id;
@@ -110,6 +111,16 @@ export async function deleteVideo(formData: FormData) {
   const supabase = createClient();
   // video_categories has `on delete cascade` on video_id, so no manual cleanup needed there.
   await supabase.from('videos').delete().eq('id', id);
+  revalidatePath('/admin/videos');
+  revalidatePath('/videos');
+  revalidatePath('/');
+}
+
+export async function toggleVideoApproved(formData: FormData) {
+  const id = formData.get('id') as string;
+  const approved = formData.get('approved') === 'true';
+  const supabase = createClient();
+  await supabase.from('videos').update({ approved: !approved }).eq('id', id);
   revalidatePath('/admin/videos');
   revalidatePath('/videos');
   revalidatePath('/');

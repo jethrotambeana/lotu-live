@@ -56,6 +56,10 @@ export async function saveMyVideo(formData: FormData) {
     language: (formData.get('language') as string) || null,
     description: (formData.get('description') as string) || null,
     recorded_date: (formData.get('recorded_date') as string) || null,
+    // Every editor save — new or edited — requires admin re-approval before
+    // it's visible on the public site, even if this video was previously
+    // approved. Only /admin can flip this back to true.
+    approved: false,
   };
 
   let videoId = id;

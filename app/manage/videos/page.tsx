@@ -6,7 +6,7 @@ export default async function ManageVideosPage() {
   const { supabase, churchId } = await requireChurchEditor();
   const { data: videos } = await supabase
     .from('videos')
-    .select('id, title, provider, speaker, recorded_date')
+    .select('id, title, provider, speaker, recorded_date, approved')
     .eq('church_id', churchId)
     .order('recorded_date', { ascending: false });
 
@@ -18,10 +18,18 @@ export default async function ManageVideosPage() {
           + Add Video
         </Link>
       </div>
+      <p className="mb-4 text-sm text-slate-500">
+        New videos and any edits go live only after an admin approves them.
+      </p>
       <div className="space-y-2">
         {(videos ?? []).map((v: any) => (
           <div key={v.id} className="flex items-center justify-between rounded border border-slate-200 p-3">
             <div>
+              {!v.approved && (
+                <span className="mr-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold uppercase text-amber-700">
+                  Pending Approval
+                </span>
+              )}
               <span className="font-medium">{v.title}</span>
               <p className="text-sm text-slate-500">
                 {v.provider}
@@ -47,3 +55,4 @@ export default async function ManageVideosPage() {
     </div>
   );
 }
+

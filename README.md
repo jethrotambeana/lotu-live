@@ -72,11 +72,19 @@ site.
   via a database trigger) — signing up alone grants no special access.
 - **Church editor accounts** (`/manage`): a lighter, self-service tier
   below full admin. A user with `role = 'editor'` and a linked `church_id`
-  can manage only their own church's profile, livestreams, events, and
-  videos — scoped both in the UI and via Row Level Security policies at
-  the database level. Becoming an editor happens automatically when a
-  church submission is approved and the submitter's email matches an
-  existing account (see Admin Guide); otherwise an admin links it manually.
+  can manage their own church's profile, events, and videos — but **not**
+  livestreams, which remain admin-only end to end (setup, provider IDs,
+  RTMP credentials — see Admin Guide's "Managing Livestreams"). Becoming
+  an editor happens automatically when a church submission is approved
+  and the submitter's email matches an existing account; otherwise an
+  admin links it manually.
+- **Editor content approval workflow**: any event or video created or
+  edited via `/manage` is saved with `approved = false` and stays hidden
+  from the public site (enforced by RLS, not just the UI) until an admin
+  approves it under Admin → Events / Admin → Videos. This applies to
+  *every* editor save, including edits to something already approved —
+  re-approval is required each time. Content created directly in `/admin`
+  defaults to approved and skips this entirely.
 - Database schema with Row Level Security on every table (`sql/schema.sql`).
 
 ### 🚧 Not Yet Built
@@ -122,11 +130,13 @@ app/
                               (approve auto-links a matching-email account
                               as the new church's editor)
   manage/
-    layout.tsx               Editor auth guard + sidebar nav
+    layout.tsx               Editor auth guard + sidebar nav (Church
+                              Profile, Events, Videos — no Livestreams)
     page.tsx                 Own church profile form, actions.ts
-    livestreams/              List, add/edit form, actions — scoped to own church
-    events/                  List, add/edit form, actions — scoped to own church
-    videos/                  List, add/edit form, actions — scoped to own church
+    events/                  List, add/edit form, actions — scoped to own
+                              church; every save sets approved = false
+    videos/                  List, add/edit form, actions — scoped to own
+                              church; every save sets approved = false
 lib/
   supabaseClient.ts          Browser Supabase client
   supabaseServer.ts          Server Component Supabase client (cookie-aware)
@@ -195,6 +205,16 @@ next.config.js                 Image domain allowlist (see §6)
   so no one, including admins, could ever read the table back, even
   though every submission was actually being saved correctly the whole
   time. Fixed by adding an admin-only SELECT policy.
+- **Editor auto-link silently matching zero accounts**: `profiles` only
+  ever had a single "read own profile" policy (`auth.uid() = id`) — a
+  side effect of how the original RLS-recursion bug above was resolved
+  (by removing the offending policy, not fixing it). This meant an admin
+  could never read or update any other user's `profiles` row, so the
+  submission-approval auto-link step always found "no profile" even when
+  one genuinely existed. Fixed properly this time with a `SECURITY
+  DEFINER` helper function (`is_admin()`) that checks admin status without
+  querying `profiles` from inside a `profiles` policy, avoiding the same
+  recursion without sacrificing admin access to the table.
 
 ## 7. Next Steps To Consider
 

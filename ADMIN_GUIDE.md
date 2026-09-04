@@ -47,12 +47,43 @@ time, and a status (Upcoming / Current / Completed) — set this manually as
 an event approaches, happens, and finishes. The public `/events` page lets
 visitors filter by Country and by this same Status field.
 
+**Approving editor submissions**: events created or edited by a church
+editor (via `/manage`) show a "Pending Approval" badge and stay hidden
+from the public site until you click **Approve** in the list (or check
+the Approved box in the edit form). This applies to *every* editor save —
+even an edit to an event you already approved goes back to pending, so
+it's worth glancing at this list periodically rather than only when a
+brand-new event shows up. Events you create directly here are approved by
+default.
+
 ### Managing Livestreams
 
 **Admin → Livestreams**
 
 This is the one you'll touch most often — every time a church goes live or
 an event stream needs to be added.
+
+**Livestreams are entirely admin-controlled.** Church editors have no
+access to this section at all — not even to see it — and the public
+church submission form doesn't ask for streaming details either. This is
+intentional: the admin sets up and owns every stream's technical
+configuration.
+
+**Typical flow for a newly approved church:**
+1. Approve the church's submission under Admin → Submissions (this
+   creates the church record and, if the submitter has a matching
+   account, auto-links them as that church's editor for their profile,
+   events, and videos — see "Church Editor Accounts" below).
+2. In your chosen provider's own dashboard (e.g. Cloudflare Stream),
+   create a new Live Input for that church, and copy its ID plus the
+   RTMP URL and stream key it generates.
+3. In Admin → Livestreams, add a new entry linked to that church, using
+   the Live Input ID as the Provider Stream ID.
+4. Separately — by email or phone, outside this app — send the church
+   contact the RTMP URL and stream key so they can point their own
+   streaming software (e.g. OBS, or a hardware encoder) at it.
+5. Once they're actually streaming, set Status to `live` and check
+   Visible so it appears under "Live Now."
 
 **Important: only ever enter the provider's own ID or URL, never embed
 code.** The site builds the video player itself from a trusted template for
@@ -102,6 +133,13 @@ URL, never embed code.
 Same note as Livestreams applies: the auto-filled thumbnail is derived at
 save time, so re-save (with Thumbnail URL left blank) if you need it to
 re-apply.
+
+**Approving editor submissions**: videos created or edited by a church
+editor (via `/manage`) show a "Pending Approval" badge and stay hidden
+from the public site until you click **Approve** in the list (or check
+the Approved box in the edit form). This applies to *every* editor save —
+even an edit to a video you already approved goes back to pending. Videos
+you create directly here are approved by default.
 
 ### Managing Categories
 
@@ -169,17 +207,33 @@ Click **Log out** at the bottom of the admin sidebar.
 
 Beyond full admins, there's a lighter self-service tier: **church editors**.
 A church editor can log in at `/login` but instead of landing on `/admin`,
-they land on `/manage` — a scoped dashboard where they can edit only their
-own church's profile, livestreams, events, and videos. They cannot see or
-touch any other church's data, the Messages inbox, other Submissions, or
-anything else in `/admin`.
+they land on `/manage` — a scoped dashboard limited to exactly three
+things:
+
+- **Church Profile** — full edit access to their own church's public
+  listing (name, contact info, description, worship times, logo, etc.).
+  There is nothing streaming-related on this form at all.
+- **Events** — can add, edit, and delete their own church's events. Any
+  new event or edit to an existing one is saved as **pending approval**
+  and stays off the public site until an admin approves it (see "Managing
+  Events" above). There is no way for an editor to set up or link a
+  livestream to an event — that stays entirely admin-only.
+- **Videos** — can add, edit, and delete their own church's videos. Same
+  approval gate as events: every save needs admin sign-off before it's
+  public (see "Managing Videos" above).
+
+**Editors have no access to Livestreams whatsoever** — not a reduced
+view, not even a read-only one. That entire area of the site, including
+provider IDs and any RTMP details, is admin-only, full stop.
 
 **How someone becomes a church editor (automatic):**
 
 1. Someone creates an account at `/signup` (any time — before or after
    submitting their church).
 2. They submit their church via the public `/submit` form, using the
-   **same email address** as their account.
+   **same email address** as their account. (The submission form no
+   longer asks for streaming details — see "Managing Livestreams" above
+   for how that gets set up separately, after approval.)
 3. When you **Approve** that submission under Admin → Submissions, the
    system automatically checks for a `profiles` row with a matching email.
    If found (and that account doesn't already have admin or editor access
@@ -200,12 +254,10 @@ update profiles set role = 'editor', church_id = 'CHURCH-UUID-HERE' where id = '
 update profiles set role = 'viewer', church_id = null where id = 'THEIR-UUID-HERE';
 ```
 
-Note: an editor's `/manage` forms are intentionally a reduced subset of the
-full admin forms — no Featured toggle, no Type or Country override, and no
-Slug editing for their church (to avoid accidentally breaking a shared
-URL). This is enforced both in the UI and, as a backstop, via Row Level
-Security policies directly on the database — even a modified request
-couldn't reach another church's data.
+This is enforced both in the UI and, as a backstop, via Row Level Security
+policies directly on the database — even a modified request couldn't reach
+another church's data, publish content without approval, or touch
+livestreams.
 
 ---
 

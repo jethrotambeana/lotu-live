@@ -68,6 +68,10 @@ create table events (
   youtube text,
   poster_url text,
   status text default 'upcoming' check (status in ('upcoming','current','completed')),
+  approved boolean default true,       -- editor-submitted events/edits start
+                                        -- false and need admin approval;
+                                        -- true by default so admin-created
+                                        -- rows need no backfill
   created_at timestamptz default now()
 );
 
@@ -120,6 +124,10 @@ create table videos (
   language text,
   description text,
   recorded_date date,
+  approved boolean default true,       -- editor-submitted videos/edits start
+                                        -- false and need admin approval;
+                                        -- true by default so admin-created
+                                        -- rows need no backfill
   created_at timestamptz default now()
 );
 
@@ -214,11 +222,12 @@ alter table events enable row level security;
 alter table livestreams enable row level security;
 alter table videos enable row level security;
 alter table submissions enable row level security;
+alter table profiles enable row level security;
 
 create policy "public read churches" on churches for select using (true);
-create policy "public read events" on events for select using (true);
+create policy "public read approved events" on events for select using (approved = true);
 create policy "public read visible livestreams" on livestreams for select using (visible = true);
-create policy "public read videos" on videos for select using (true);
+create policy "public read approved videos" on videos for select using (approved = true);
 -- submissions: insert-only from the public; admins can read (see below),
 -- no read access for anyone else.
 create policy "public insert submissions" on submissions for insert with check (true);
@@ -242,6 +251,28 @@ create policy "admin write videos" on videos for all using (
 create policy "admin manage submissions" on submissions for update using (
   exists (select 1 from profiles where id = auth.uid() and role = 'admin')
 );
+
+-- profiles itself only had a "read own profile" policy for a long time
+-- (see README §6 on the original RLS-recursion fix), which meant an admin
+-- could never read or update any OTHER user's row — silently breaking
+-- things like the editor auto-link step. Fixed via a SECURITY DEFINER
+-- helper, which avoids the same recursion that caused the original policy
+-- to be removed rather than fixed.
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from profiles where id = auth.uid() and role = 'admin'
+  );
+$$;
+
+create policy "read own profile" on profiles for select using (auth.uid() = id);
+create policy "admin read all profiles" on profiles for select using (public.is_admin());
+create policy "admin write all profiles" on profiles for update using (public.is_admin());
 
 -- Church editors: scoped access to only the one church they're linked to
 -- (profiles.church_id), enforced here at the database level as a backstop
