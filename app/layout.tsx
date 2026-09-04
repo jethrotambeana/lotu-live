@@ -1,6 +1,7 @@
 import './globals.css';
 import Link from 'next/link';
 import Image from 'next/image';
+import MobileNav from '@/components/MobileNav';
 
 export const metadata = {
   title: 'LOTU.LIVE — The Pacific Adventist Media Network',
@@ -23,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen bg-white text-slate-900">
-        <header className="border-b border-slate-200">
+        <header className="relative border-b border-slate-200">
           <nav className="mx-auto flex max-w-6xl items-center justify-between p-4">
             <Link href="/" className="flex items-center">
               <Image
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </li>
               ))}
             </ul>
+            <MobileNav items={NAV} />
           </nav>
         </header>
         <main>{children}</main>
