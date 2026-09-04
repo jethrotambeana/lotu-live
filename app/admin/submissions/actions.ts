@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabaseServer';
 import { revalidatePath } from 'next/cache';
+import { sendEmail } from '@/lib/email';
 
 function slugify(name: string) {
   return name
@@ -33,7 +34,7 @@ export async function approveSubmission(formData: FormData) {
       facebook: submission.facebook,
       youtube: submission.youtube,
     })
-    .select('id')
+    .select('id, slug')
     .single();
 
   if (churchError || !newChurch) {
@@ -41,13 +42,16 @@ export async function approveSubmission(formData: FormData) {
     throw new Error(`Failed to approve submission: ${churchError?.message}`);
   }
 
-  // Auto-link the submitter as this church's editor, if an account with a
-  // matching email already exists. Every signup gets a profiles row
-  // automatically (see the handle_new_user trigger) with role 'viewer', so
-  // this works whether they signed up before or after submitting. Only
-  // upgrades a plain 'viewer' — never silently overwrites someone who's
-  // already an admin or already editing a different church, since that
-  // could be a coincidental email match rather than the actual submitter.
+  // Flag a matching account for editor activation, if one already exists.
+  // Every signup gets a profiles row automatically (see the
+  // handle_new_user trigger) with role 'viewer' by default, so this works
+  // whether they signed up before or after submitting. Landing them in
+  // 'pending_editor' (not straight to 'editor') means an admin still has
+  // to explicitly click Activate — see activateEditor below — rather than
+  // an email match alone granting access. Never overwrites someone who's
+  // already an admin, already editing a different church, or already
+  // pending/active elsewhere, since that could be a coincidental email
+  // match rather than the actual submitter.
   const submissionEmail = submission.email?.trim();
   if (submissionEmail) {
     const { data: matchedProfile, error: lookupError } = await supabase
@@ -57,29 +61,47 @@ export async function approveSubmission(formData: FormData) {
       .maybeSingle();
 
     if (lookupError) {
-      console.error('Editor auto-link: profile lookup failed:', lookupError);
+      console.error('Editor match: profile lookup failed:', lookupError);
     } else if (!matchedProfile) {
-      console.log(`Editor auto-link: no profile found matching email "${submissionEmail}".`);
+      console.log(`Editor match: no profile found matching email "${submissionEmail}".`);
     } else if (matchedProfile.role !== 'viewer' || matchedProfile.church_id) {
       console.log(
-        `Editor auto-link: skipped for "${submissionEmail}" — role is "${matchedProfile.role}", church_id is ${matchedProfile.church_id}. Only plain 'viewer' accounts with no existing church are auto-linked.`
+        `Editor match: skipped for "${submissionEmail}" — role is "${matchedProfile.role}", church_id is ${matchedProfile.church_id}. Only plain 'viewer' accounts with no existing church are matched.`
       );
     } else {
       const { error: linkError } = await supabase
         .from('profiles')
-        .update({ role: 'editor', church_id: newChurch.id })
+        .update({ role: 'pending_editor', church_id: newChurch.id })
         .eq('id', matchedProfile.id);
       if (linkError) {
-        console.error('Editor auto-link: update failed:', linkError);
+        console.error('Editor match: update failed:', linkError);
         // Non-fatal — the church was still created successfully; an admin
         // can link the editor manually via SQL if this step fails.
       } else {
-        console.log(`Editor auto-link: linked "${submissionEmail}" to church ${newChurch.id}.`);
+        console.log(`Editor match: "${submissionEmail}" flagged pending activation for church ${newChurch.id}.`);
       }
     }
   }
 
   await supabase.from('submissions').update({ status: 'approved' }).eq('id', id);
+
+  if (submission.email) {
+    await sendEmail({
+      to: submission.email,
+      subject: 'Your church is now listed on LOTU.LIVE',
+      text: `Hi ${submission.contact_name || 'there'},
+
+Good news — ${submission.church_name} has been approved and is now listed on LOTU.LIVE.
+
+You can see your church's page here: https://lotu.live/church/${newChurch.slug}
+
+Want to manage your church's page yourself? Create an account using this same email address at lotu.live/signup. Once your account is set up, one of our admins will activate it — after that, you'll be able to log in and manage your church's profile, add events, and upload videos.
+
+We'll be in touch separately about setting up a livestream if you're planning to broadcast your services.
+
+— The LOTU.LIVE Team`,
+    });
+  }
 
   revalidatePath('/admin/submissions');
   revalidatePath('/churches');
@@ -89,5 +111,51 @@ export async function rejectSubmission(formData: FormData) {
   const id = formData.get('id') as string;
   const supabase = createClient();
   await supabase.from('submissions').update({ status: 'rejected' }).eq('id', id);
+  revalidatePath('/admin/submissions');
+}
+
+export async function activateEditor(formData: FormData) {
+  const profileId = formData.get('profileId') as string;
+  const supabase = createClient();
+
+  const { data: profile, error: fetchError } = await supabase
+    .from('profiles')
+    .select('email, church_id, churches(name)')
+    .eq('id', profileId)
+    .single();
+
+  if (fetchError || !profile) {
+    console.error('Failed to fetch pending editor profile:', fetchError);
+    throw new Error('Could not find that pending editor request.');
+  }
+
+  const { error } = await supabase.from('profiles').update({ role: 'editor' }).eq('id', profileId);
+  if (error) {
+    console.error('Failed to activate editor:', error);
+    throw new Error(`Failed to activate: ${error.message}`);
+  }
+
+  const churchName = (profile as any).churches?.name || 'your church';
+  if (profile.email) {
+    await sendEmail({
+      to: profile.email,
+      subject: 'Your LOTU.LIVE account is ready',
+      text: `Hi there,
+
+Your account for ${churchName} has been activated. You can now log in and manage your church's page.
+
+Log in here: https://lotu.live/login
+
+From your dashboard you can:
+- Update your church's profile (contact info, description, worship times, logo)
+- Add and edit events
+- Add and edit videos
+
+Note: new events and videos you add need a quick review before they go live on the public site — you'll see a "Pending Approval" label until that happens.
+
+— The LOTU.LIVE Team`,
+    });
+  }
+
   revalidatePath('/admin/submissions');
 }

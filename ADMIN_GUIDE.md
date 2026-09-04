@@ -210,6 +210,15 @@ A church editor can log in at `/login` but instead of landing on `/admin`,
 they land on `/manage` — a scoped dashboard limited to exactly three
 things:
 
+> **One-time setup**: the approval emails below require a `RESEND_API_KEY`
+> environment variable in Netlify. This is separate from the SMTP
+> credentials already configured directly in Supabase's dashboard (which
+> only handle signup confirmation/password reset) — grab a fresh API key
+> from Resend's dashboard and add it to Netlify's Environment Variables if
+> it isn't already set. Without it, approvals and activations still work
+> exactly the same, the emails just silently don't send (logged in
+> Netlify's function logs, not a failure).
+
 - **Church Profile** — full edit access to their own church's public
   listing (name, contact info, description, worship times, logo, etc.).
   There is nothing streaming-related on this form at all.
@@ -226,28 +235,36 @@ things:
 view, not even a read-only one. That entire area of the site, including
 provider IDs and any RTMP details, is admin-only, full stop.
 
-**How someone becomes a church editor (automatic):**
+**How someone becomes a church editor (two admin-reviewed steps):**
 
-1. Someone creates an account at `/signup` (any time — before or after
-   submitting their church).
-2. They submit their church via the public `/submit` form, using the
-   **same email address** as their account. (The submission form no
-   longer asks for streaming details — see "Managing Livestreams" above
-   for how that gets set up separately, after approval.)
-3. When you **Approve** that submission under Admin → Submissions, the
-   system automatically checks for a `profiles` row with a matching email.
-   If found (and that account doesn't already have admin or editor access
-   elsewhere), it's automatically upgraded to `role = 'editor'` and linked
-   to the newly created church. The submissions list shows an "Editor
-   access" note on each approved entry confirming whether this worked.
+1. Someone submits their church via the public `/submit` form.
+2. You **Approve** that submission under Admin → Submissions. This
+   creates the church record and sends the submitter an email confirming
+   their church is live, with a link to it and instructions to create an
+   account at `/signup` if they want to manage it themselves.
+3. They create an account using that **same email address** (any time —
+   before or after their church was submitted/approved).
+4. The system checks for a matching approved church with no editor
+   attached yet. If found, their account lands in a **pending** state —
+   not yet an editor, no `/manage` access — and shows up under **Pending
+   Editor Activations** at the top of the Submissions page.
+5. You click **Activate**. This is the step that actually grants access,
+   and it sends them a second email confirming they can log in.
 
-**If auto-linking didn't happen** (e.g. they hadn't signed up yet at
-approval time, or used a different email), link them manually — find their
+An email match alone never grants access — both the church approval and
+the editor activation are separate, explicit clicks you make. This is
+deliberate: matching by email is a convenience for finding the right
+account, not a substitute for you confirming it's the right person.
+
+**If auto-matching didn't happen** (e.g. they used a different email, or
+the domain-matching didn't pick it up), link them manually — find their
 UUID under Authentication → Users, find the church's UUID under Admin →
 Churches → Edit (visible in the URL), then in Supabase SQL Editor:
 ```sql
 update profiles set role = 'editor', church_id = 'CHURCH-UUID-HERE' where id = 'THEIR-UUID-HERE';
 ```
+(This skips the pending step and grants access immediately — appropriate
+when you're manually confirming it yourself anyway.)
 
 **To remove editor access** without deleting their account:
 ```sql

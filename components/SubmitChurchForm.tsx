@@ -39,8 +39,8 @@ export default function SubmitChurchForm() {
   if (status === 'sent') {
     return (
       <p className="rounded bg-green-50 p-4 text-green-700">
-        Thanks! Your church has been submitted for review. Once approved, we'll follow up
-        separately about setting up your livestream.
+        Thanks! Your church has been submitted for review. Once approved, we'll email you with a
+        link to your church's page and instructions for creating an account to manage it yourself.
       </p>
     );
   }

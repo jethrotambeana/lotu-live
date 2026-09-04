@@ -74,10 +74,20 @@ site.
   below full admin. A user with `role = 'editor'` and a linked `church_id`
   can manage their own church's profile, events, and videos — but **not**
   livestreams, which remain admin-only end to end (setup, provider IDs,
-  RTMP credentials — see Admin Guide's "Managing Livestreams"). Becoming
-  an editor happens automatically when a church submission is approved
-  and the submitter's email matches an existing account; otherwise an
-  admin links it manually.
+  RTMP credentials — see Admin Guide's "Managing Livestreams"). Getting
+  there is a two-step, admin-reviewed process: (1) a church submission is
+  approved, which emails the submitter a link to their new page and
+  instructions to sign up; (2) once they sign up with a matching email,
+  their account lands in `pending_editor` — visible under Admin →
+  Submissions — until an admin explicitly clicks **Activate**, which sends
+  a second email confirming they can log in. An email match alone never
+  grants access; both approvals are manual, human steps.
+- **Transactional email** (church-approved, editor-activated) is sent via
+  Resend's API directly (`lib/email.ts`), reusing the same verified
+  sending domain set up for Supabase Auth's SMTP. Requires a
+  `RESEND_API_KEY` environment variable in Netlify — if unset, these
+  emails are silently skipped (logged, not fatal) rather than breaking
+  the underlying approve/activate action.
 - **Editor content approval workflow**: any event or video created or
   edited via `/manage` is saved with `approved = false` and stays hidden
   from the public site (enforced by RLS, not just the UI) until an admin
@@ -145,6 +155,8 @@ lib/
                               CLOUDFLARE_CUSTOMER_CODE
   thumbnails.ts              Shared YouTube/Cloudflare thumbnail derivation,
                               used by livestreams, videos, and manage actions
+  email.ts                   Resend API wrapper for transactional emails
+                              (church-approved, editor-activated)
   requireAdmin.ts            Shared admin auth check
   requireChurchEditor.ts     Shared church-editor auth check (role='editor'
                               + church_id), used by all /manage routes
@@ -166,6 +178,8 @@ next.config.js                 Image domain allowlist (see §6)
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase public anon key (safe to expose client-side) |
 | `NEXT_PUBLIC_CLOUDFLARE_CUSTOMER_CODE` | Cloudflare Stream customer subdomain code, used both to build the video/livestream player embed and to auto-derive Cloudflare Stream thumbnails |
+| `RESEND_API_KEY` | Sends the church-approved and editor-activated transactional emails via Resend's API (`lib/email.ts`). Separate from Supabase Auth's own SMTP setup, which handles signup confirmation/password reset emails instead. |
+| `EMAIL_FROM_ADDRESS` | Optional override for the "from" address on those emails; defaults to `LOTU.LIVE <noreply@updates.lotu.live>` |
 
 ## 6. Known Issues Fixed So Far
 

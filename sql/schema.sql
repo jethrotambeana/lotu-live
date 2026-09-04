@@ -173,22 +173,46 @@ create table site_settings (
 -- profile table extending auth.users with a role for admin gating
 create table profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  role text default 'viewer' check (role in ('viewer','editor','admin')),
+  role text default 'viewer' check (role in ('viewer','pending_editor','editor','admin')),
   email text,                          -- synced via handle_new_user trigger
-  church_id uuid references churches(id) -- set when role = 'editor'; the one
-                                        -- church this account may manage
+  church_id uuid references churches(id) -- set once role is pending_editor
+                                        -- or editor; the one church this
+                                        -- account may manage (or is
+                                        -- requesting to manage)
 );
 create index on profiles (church_id);
 
--- Auto-create a profiles row (role 'viewer') for every new signup, so
--- self-service church-editor linking (see submissions approval flow) can
--- match by email reliably regardless of signup order.
+-- Auto-create a profiles row for every new signup. Also checks for an
+-- approved church whose contact email matches this signup (and that
+-- doesn't already have an editor/pending editor) — if found, the new
+-- account lands in 'pending_editor' rather than plain 'viewer', ready for
+-- an admin to Activate in Admin → Submissions. This covers someone
+-- signing up AFTER their church was already approved; the reverse order
+-- (signing up first) is handled in approveSubmission instead.
 create or replace function public.handle_new_user()
 returns trigger as $$
+declare
+  matched_church_id uuid;
 begin
-  insert into public.profiles (id, role, email)
-  values (new.id, 'viewer', new.email)
+  select c.id into matched_church_id
+  from churches c
+  where c.email is not null
+    and lower(c.email) = lower(new.email)
+    and not exists (
+      select 1 from profiles p
+      where p.church_id = c.id and p.role in ('editor', 'pending_editor')
+    )
+  limit 1;
+
+  insert into public.profiles (id, role, email, church_id)
+  values (
+    new.id,
+    case when matched_church_id is not null then 'pending_editor' else 'viewer' end,
+    new.email,
+    matched_church_id
+  )
   on conflict (id) do nothing;
+
   return new;
 end;
 $$ language plpgsql security definer;
