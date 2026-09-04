@@ -55,7 +55,40 @@ export async function saveChurch(formData: FormData) {
 export async function deleteChurch(formData: FormData) {
   const id = formData.get('id') as string;
   const supabase = createClient();
-  await supabase.from('churches').delete().eq('id', id);
+
+  // Churches are referenced by livestreams, events, videos, and profiles
+  // (an editor's church_id) with no ON DELETE cascade, so Postgres blocks
+  // the delete outright if any of these still point at it. Check first
+  // and give a specific, actionable message rather than a raw FK-violation
+  // error — or worse, silently doing nothing.
+  const [{ count: livestreamCount }, { count: eventCount }, { count: videoCount }, { count: editorCount }] =
+    await Promise.all([
+      supabase.from('livestreams').select('id', { count: 'exact', head: true }).eq('church_id', id),
+      supabase.from('events').select('id', { count: 'exact', head: true }).eq('host_church_id', id),
+      supabase.from('videos').select('id', { count: 'exact', head: true }).eq('church_id', id),
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('church_id', id),
+    ]);
+
+  const blockers: string[] = [];
+  if (livestreamCount) blockers.push(`${livestreamCount} livestream${livestreamCount === 1 ? '' : 's'}`);
+  if (eventCount) blockers.push(`${eventCount} event${eventCount === 1 ? '' : 's'}`);
+  if (videoCount) blockers.push(`${videoCount} video${videoCount === 1 ? '' : 's'}`);
+  if (editorCount) blockers.push(`${editorCount} linked editor account${editorCount === 1 ? '' : 's'}`);
+
+  if (blockers.length > 0) {
+    throw new Error(
+      `Can't delete this church — it still has ${blockers.join(
+        ', '
+      )} attached. Delete/reassign the livestreams, events, and videos first. For a linked editor account, run in Supabase SQL Editor: update profiles set role = 'viewer', church_id = null where church_id = '${id}';`
+    );
+  }
+
+  const { error } = await supabase.from('churches').delete().eq('id', id);
+  if (error) {
+    console.error('Failed to delete church:', error);
+    throw new Error(`Failed to delete church: ${error.message}`);
+  }
+
   revalidatePath('/admin/churches');
   revalidatePath('/churches');
 }
