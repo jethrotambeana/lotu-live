@@ -3,7 +3,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { deleteChurch } from './actions';
 
-export default async function AdminChurchesPage() {
+export default async function AdminChurchesPage({
+  searchParams,
+}: {
+  searchParams: { error?: string };
+}) {
   const supabase = createClient();
   const { data: churches } = await supabase
     .from('churches')
@@ -18,6 +22,11 @@ export default async function AdminChurchesPage() {
           + Add Church
         </Link>
       </div>
+      {searchParams.error && (
+        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {searchParams.error}
+        </div>
+      )}
       <div className="space-y-2">
         {(churches ?? []).map((c: any) => (
           <div key={c.id} className="flex items-center justify-between rounded border border-slate-200 p-3">

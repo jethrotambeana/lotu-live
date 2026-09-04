@@ -76,17 +76,19 @@ export async function deleteChurch(formData: FormData) {
   if (editorCount) blockers.push(`${editorCount} linked editor account${editorCount === 1 ? '' : 's'}`);
 
   if (blockers.length > 0) {
-    throw new Error(
-      `Can't delete this church — it still has ${blockers.join(
-        ', '
-      )} attached. Delete/reassign the livestreams, events, and videos first. For a linked editor account, run in Supabase SQL Editor: update profiles set role = 'viewer', church_id = null where church_id = '${id}';`
-    );
+    const message = `Can't delete this church — it still has ${blockers.join(
+      ', '
+    )} attached. Delete/reassign the livestreams, events, and videos first. For a linked editor account, run in Supabase SQL Editor: update profiles set role = 'viewer', church_id = null where church_id = '${id}';`;
+    // redirect() (unlike throw new Error()) is NOT swallowed by Next's
+    // production error handling — it's how the message actually reaches
+    // the admin instead of a generic "Application error" page.
+    redirect(`/admin/churches?error=${encodeURIComponent(message)}`);
   }
 
   const { error } = await supabase.from('churches').delete().eq('id', id);
   if (error) {
     console.error('Failed to delete church:', error);
-    throw new Error(`Failed to delete church: ${error.message}`);
+    redirect(`/admin/churches?error=${encodeURIComponent(`Failed to delete church: ${error.message}`)}`);
   }
 
   revalidatePath('/admin/churches');
