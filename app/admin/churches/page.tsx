@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
 import Image from 'next/image';
 import { deleteChurch, unlinkChurchEditors } from './actions';
+import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
 
 export default async function AdminChurchesPage({
   searchParams,
@@ -55,7 +56,12 @@ export default async function AdminChurchesPage({
               </Link>
               <form action={deleteChurch}>
                 <input type="hidden" name="id" value={c.id} />
-                <button className="text-sm text-red-600 underline">Delete</button>
+                <ConfirmSubmitButton
+                  confirmMessage={`Delete "${c.name}"? This can't be undone.`}
+                  className="text-sm text-red-600 underline"
+                >
+                  Delete
+                </ConfirmSubmitButton>
               </form>
             </div>
           </div>
