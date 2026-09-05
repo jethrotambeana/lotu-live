@@ -52,7 +52,37 @@ export async function saveEvent(formData: FormData) {
 export async function deleteEvent(formData: FormData) {
   const id = formData.get('id') as string;
   const supabase = createClient();
-  await supabase.from('events').delete().eq('id', id);
+
+  // events is referenced by livestreams.event_id and videos.event_id with
+  // no ON DELETE cascade, so Postgres blocks the delete outright if either
+  // still points at it. Check first and give a specific, actionable
+  // message rather than a raw FK-violation error — or worse, silently
+  // doing nothing (see the same fix already applied to deleteChurch).
+  const [{ count: livestreamCount }, { count: videoCount }] = await Promise.all([
+    supabase.from('livestreams').select('id', { count: 'exact', head: true }).eq('event_id', id),
+    supabase.from('videos').select('id', { count: 'exact', head: true }).eq('event_id', id),
+  ]);
+
+  const blockers: string[] = [];
+  if (livestreamCount) blockers.push(`${livestreamCount} livestream${livestreamCount === 1 ? '' : 's'}`);
+  if (videoCount) blockers.push(`${videoCount} video${videoCount === 1 ? '' : 's'}`);
+
+  if (blockers.length > 0) {
+    const message = `Can't delete this event — it still has ${blockers.join(
+      ', '
+    )} linked to it. Unlink or delete those first (edit each one and clear its Event field, or delete it under Admin → Livestreams / Admin → Videos).`;
+    // redirect() (unlike throw new Error()) is NOT swallowed by Next's
+    // production error handling — it's how the message actually reaches
+    // the admin instead of a generic "Application error" page.
+    redirect(`/admin/events?error=${encodeURIComponent(message)}`);
+  }
+
+  const { error } = await supabase.from('events').delete().eq('id', id);
+  if (error) {
+    console.error('Failed to delete event:', error);
+    redirect(`/admin/events?error=${encodeURIComponent(`Failed to delete event: ${error.message}`)}`);
+  }
+
   revalidatePath('/admin/events');
   revalidatePath('/events');
 }

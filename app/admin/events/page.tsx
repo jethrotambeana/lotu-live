@@ -3,7 +3,11 @@ import Link from 'next/link';
 import { deleteEvent, toggleEventApproved } from './actions';
 import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
 
-export default async function AdminEventsPage() {
+export default async function AdminEventsPage({
+  searchParams,
+}: {
+  searchParams: { error?: string };
+}) {
   const supabase = createClient();
   const { data: events } = await supabase
     .from('events')
@@ -18,6 +22,11 @@ export default async function AdminEventsPage() {
           + Add Event
         </Link>
       </div>
+      {searchParams.error && (
+        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {searchParams.error}
+        </div>
+      )}
       <div className="space-y-2">
         {(events ?? []).map((e: any) => (
           <div key={e.id} className="flex items-center justify-between rounded border border-slate-200 p-3">
