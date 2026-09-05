@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
 import { deleteEvent, toggleEventApproved } from './actions';
+import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
 
 export default async function AdminEventsPage() {
   const supabase = createClient();
@@ -44,7 +45,12 @@ export default async function AdminEventsPage() {
               </Link>
               <form action={deleteEvent}>
                 <input type="hidden" name="id" value={e.id} />
-                <button className="text-sm text-red-600 underline">Delete</button>
+                <ConfirmSubmitButton
+                  confirmMessage={`Delete "${e.name}"? This can't be undone.`}
+                  className="text-sm text-red-600 underline"
+                >
+                  Delete
+                </ConfirmSubmitButton>
               </form>
             </div>
           </div>

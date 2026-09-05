@@ -1,6 +1,7 @@
 import { requireChurchEditor } from '@/lib/requireChurchEditor';
 import Link from 'next/link';
 import { deleteMyEvent } from './actions';
+import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
 
 export default async function ManageEventsPage() {
   const { supabase, churchId } = await requireChurchEditor();
@@ -42,7 +43,12 @@ export default async function ManageEventsPage() {
               </Link>
               <form action={deleteMyEvent}>
                 <input type="hidden" name="id" value={e.id} />
-                <button className="text-sm text-red-600 underline">Delete</button>
+                <ConfirmSubmitButton
+                  confirmMessage={`Delete "${e.name}"? This can't be undone.`}
+                  className="text-sm text-red-600 underline"
+                >
+                  Delete
+                </ConfirmSubmitButton>
               </form>
             </div>
           </div>

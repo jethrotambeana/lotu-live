@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
 import { deleteVideo, toggleVideoApproved } from './actions';
+import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
 
 export default async function AdminVideosPage() {
   const supabase = createClient();
@@ -47,7 +48,12 @@ export default async function AdminVideosPage() {
               </Link>
               <form action={deleteVideo}>
                 <input type="hidden" name="id" value={v.id} />
-                <button className="text-sm text-red-600 underline">Delete</button>
+                <ConfirmSubmitButton
+                  confirmMessage={`Delete "${v.title}"? This can't be undone.`}
+                  className="text-sm text-red-600 underline"
+                >
+                  Delete
+                </ConfirmSubmitButton>
               </form>
             </div>
           </div>

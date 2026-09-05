@@ -1,6 +1,7 @@
 import { requireChurchEditor } from '@/lib/requireChurchEditor';
 import Link from 'next/link';
 import { deleteMyVideo } from './actions';
+import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
 
 export default async function ManageVideosPage() {
   const { supabase, churchId } = await requireChurchEditor();
@@ -43,7 +44,12 @@ export default async function ManageVideosPage() {
               </Link>
               <form action={deleteMyVideo}>
                 <input type="hidden" name="id" value={v.id} />
-                <button className="text-sm text-red-600 underline">Delete</button>
+                <ConfirmSubmitButton
+                  confirmMessage={`Delete "${v.title}"? This can't be undone.`}
+                  className="text-sm text-red-600 underline"
+                >
+                  Delete
+                </ConfirmSubmitButton>
               </form>
             </div>
           </div>

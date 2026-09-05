@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
 import { deleteLivestream, toggleVisible } from './actions';
+import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
 
 export default async function AdminLivestreamsPage() {
   const supabase = createClient();
@@ -44,7 +45,12 @@ export default async function AdminLivestreamsPage() {
               </Link>
               <form action={deleteLivestream}>
                 <input type="hidden" name="id" value={s.id} />
-                <button className="text-sm text-red-600 underline">Delete</button>
+                <ConfirmSubmitButton
+                  confirmMessage={`Delete "${s.name}"? This can't be undone.`}
+                  className="text-sm text-red-600 underline"
+                >
+                  Delete
+                </ConfirmSubmitButton>
               </form>
             </div>
           </div>
