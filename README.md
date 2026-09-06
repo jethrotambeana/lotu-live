@@ -95,11 +95,22 @@ site.
   *every* editor save, including edits to something already approved —
   re-approval is required each time. Content created directly in `/admin`
   defaults to approved and skips this entirely.
+- **Automatic live/offline detection for Cloudflare Stream**: a Netlify
+  Scheduled Function (`netlify/functions/check-livestream-status.ts`) runs
+  every 15 minutes, checks each Cloudflare-provider livestream's actual
+  broadcast status via Cloudflare's lifecycle endpoint, and updates
+  `status` between `live` and `offline` automatically — no admin action
+  needed once a stream is set up. It never touches `upcoming`/`scheduled`
+  statuses unless the stream actually goes live, so scheduling ahead of
+  time still works normally. YouTube, Facebook, and HLS streams remain
+  fully manual — an admin still sets their status by hand.
 - Database schema with Row Level Security on every table (`sql/schema.sql`).
 
 ### 🚧 Not Yet Built
-- Automatic live/offline detection via provider APIs (still manual: an
-  admin sets `status` to `live` themselves).
+- Automatic live/offline detection for YouTube and Facebook (Cloudflare
+  Stream now auto-detects — see below; YouTube has a feasible path via its
+  Data API but hasn't been built yet, and Facebook isn't practically
+  achievable without an App Review process).
 - Thumbnail auto-derivation for Cloudinary videos (currently manual paste
   only — would need a known Cloudinary cloud name to build the same kind
   of predictable-URL trick used for YouTube/Cloudflare Stream).
@@ -180,6 +191,7 @@ next.config.js                 Image domain allowlist (see §6)
 | `NEXT_PUBLIC_CLOUDFLARE_CUSTOMER_CODE` | Cloudflare Stream customer subdomain code, used both to build the video/livestream player embed and to auto-derive Cloudflare Stream thumbnails |
 | `RESEND_API_KEY` | Sends the church-approved and editor-activated transactional emails via Resend's API (`lib/email.ts`). Separate from Supabase Auth's own SMTP setup, which handles signup confirmation/password reset emails instead. |
 | `EMAIL_FROM_ADDRESS` | Optional override for the "from" address on those emails; defaults to `LOTU.LIVE <noreply@updates.lotu.live>` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Used only by `netlify/functions/check-livestream-status.ts` to bypass RLS when auto-updating livestream status from a scheduled job with no logged-in session. **Never expose this client-side** — mark it as a secret in Netlify. |
 
 ## 6. Known Issues Fixed So Far
 

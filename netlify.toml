@@ -7,3 +7,6 @@
 
 [build.environment]
   NEXT_TELEMETRY_DISABLED = "1"
+
+[functions."check-livestream-status"]
+  schedule = "*/15 * * * *"

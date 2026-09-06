@@ -85,6 +85,15 @@ configuration.
 5. Once they're actually streaming, set Status to `live` and check
    Visible so it appears under "Live Now."
 
+**Cloudflare Stream statuses update automatically.** A scheduled check
+runs every 15 minutes and flips a Cloudflare-provider stream's Status
+between `live` and `offline` based on whether it's actually broadcasting
+— you don't need to do this by hand once it's set up. It won't touch a
+stream you've set to `upcoming` or `scheduled` until it actually starts
+broadcasting, so scheduling ahead of time still works as expected.
+YouTube, Facebook, and HLS streams are still fully manual — set their
+Status yourself as before.
+
 **Important: only ever enter the provider's own ID or URL, never embed
 code.** The site builds the video player itself from a trusted template for
 security. Pasting `<iframe>` or other HTML here will not work and is not
