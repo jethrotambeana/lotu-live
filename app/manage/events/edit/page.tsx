@@ -62,6 +62,10 @@ export default async function ManageEventFormPage({ searchParams }: { searchPara
           </select>
         </div>
 
+        <Field label="Contact Name" name="contact_name" defaultValue={event?.contact_name} />
+        <Field label="Contact Email" name="email" defaultValue={event?.email} />
+        <Field label="Contact Phone" name="phone" defaultValue={event?.phone} />
+
         <Field label="Website" name="website" defaultValue={event?.website} />
         <Field label="Facebook" name="facebook" defaultValue={event?.facebook} />
         <Field label="YouTube" name="youtube" defaultValue={event?.youtube} />

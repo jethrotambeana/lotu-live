@@ -80,6 +80,15 @@ pending, so it's worth glancing at this list periodically rather than
 only when a brand-new event shows up. Events you create directly here are
 approved by default.
 
+**Contact info**: Contact Name, Contact Email, and Contact Phone are
+editable fields on every event — for events submitted via `/submit-event`,
+these are copied over automatically from the submission; for events you
+create directly, fill them in yourself. If the organizer or contact
+person changes later, just update these fields (available in both
+Admin → Events and, for the event's own church/ministry editor, in
+`/manage`). These aren't shown on the public event page — they're for
+your own records, not public contact details.
+
 ### Managing Livestreams
 
 **Admin → Livestreams**

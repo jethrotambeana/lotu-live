@@ -89,6 +89,9 @@ create table events (
   end_date date,
   start_time time,
   end_time time,
+  contact_name text,                   -- optional; lets admin/editor update
+  email text,                          -- who to contact if the person
+  phone text,                          -- changes, after approval
   languages text[],
   website text,
   facebook text,
