@@ -29,12 +29,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <nav className="mx-auto flex max-w-6xl items-center justify-between p-4">
             <Link href="/" className="flex items-center">
               <Image
-                src="/logo.png"
-                alt="LOTU.LIVE — Worship Together. Wherever You Are."
-                width={160}
-                height={110}
+                src="/logo-header.png"
+                alt="LOTU.LIVE"
+                width={600}
+                height={369}
                 priority
-                className="h-12 w-auto"
+                className="h-14 w-auto"
               />
             </Link>
             <ul className="hidden gap-5 text-sm md:flex">
@@ -50,9 +50,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </nav>
         </header>
         <main>{children}</main>
-        <footer className="mt-12 border-t border-slate-200 py-8 text-center text-sm text-slate-500">
-          <p>LOTU.LIVE — The Pacific Gospel Media Network</p>
-          <p className="mt-1">Vanuatu · Solomon Islands · Papua New Guinea · Fiji</p>
+        <footer className="mt-12 bg-black py-10 text-center">
+          <Image
+            src="/logo-footer.png"
+            alt="LOTU.LIVE — Worship Together. Wherever You Are."
+            width={800}
+            height={533}
+            className="mx-auto h-24 w-auto"
+          />
+          <p className="mt-4 text-sm text-slate-400">
+            Vanuatu · Solomon Islands · Papua New Guinea · Fiji
+          </p>
         </footer>
       </body>
     </html>
