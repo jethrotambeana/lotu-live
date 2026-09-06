@@ -25,22 +25,27 @@ export default async function HomePage() {
     <>
       {/* Hero — the banner already carries the wordmark, tagline, country
           list, and feature callouts. Shown at its exact natural aspect
-          ratio (2046:768) so nothing is ever cropped, on any screen size —
-          it simply scales shorter on narrow phones rather than losing
-          content unpredictably. Buttons sit in their own bar below rather
-          than overlaid, since the banner gets too short on mobile to
-          reliably host legible overlay text. */}
+          ratio (2046:768) so nothing is ever cropped, on any screen size.
+          Constrained to the same max-w-6xl content width as every other
+          section on this page, rather than full-bleed — full-bleed made it
+          balloon to the entire viewport width on wide desktop screens,
+          which both inflated its height far beyond what's reasonable and
+          risked edge content sitting outside the visible area. Buttons sit
+          in their own bar below rather than overlaid, since the banner
+          gets too short on mobile to reliably host legible overlay text. */}
       <section>
         <h1 className="sr-only">LOTU.LIVE — Worship Together. Wherever You Are.</h1>
-        <div className="relative aspect-[2046/768] w-full">
-          <Image
-            src="/hero-banner.jpg"
-            alt="LOTU.LIVE — Worship Together. Wherever You Are. Live streams, inspiring messages, and church services across Vanuatu, Solomon Islands, Papua New Guinea, Fiji and beyond."
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
+        <div className="mx-auto max-w-6xl px-4 pt-6">
+          <div className="relative aspect-[2046/768] w-full overflow-hidden rounded-lg">
+            <Image
+              src="/hero-banner.jpg"
+              alt="LOTU.LIVE — Worship Together. Wherever You Are. Live streams, inspiring messages, and church services across Vanuatu, Solomon Islands, Papua New Guinea, Fiji and beyond."
+              fill
+              priority
+              sizes="(max-width: 1152px) 100vw, 1152px"
+              className="object-cover"
+            />
+          </div>
         </div>
         <div className="flex flex-wrap justify-center gap-3 bg-slate-900 px-4 py-5">
           <Link href="/live" className="rounded bg-sky-600 px-5 py-2 text-white hover:bg-sky-500">
