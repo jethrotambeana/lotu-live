@@ -46,6 +46,12 @@ export default function SubmitEventForm() {
       ...form,
       host_church_id: form.host_church_id || null,
       host_ministry_id: form.host_ministry_id || null,
+      // Postgres's date/time column types reject an empty string outright
+      // (only a valid value or null is accepted) — these are all optional
+      // in the form, so a blank one must become null, not "".
+      end_date: form.end_date || null,
+      start_time: form.start_time || null,
+      end_time: form.end_time || null,
     });
     setStatus(error ? 'error' : 'sent');
   }
