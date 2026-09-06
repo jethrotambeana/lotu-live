@@ -1,8 +1,7 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabaseServer';
 import LiveCard from '@/components/LiveCard';
-
-const COUNTRIES = ['Vanuatu', 'Solomon Islands', 'Papua New Guinea', 'Fiji'];
 
 export default async function HomePage() {
   const supabase = createClient();
@@ -24,32 +23,31 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* Hero */}
-      <section className="bg-slate-50 px-4 py-16 text-center">
-        <h1 className="mx-auto max-w-2xl text-3xl font-bold md:text-4xl">
-          Worship Together. Wherever You Are.
-        </h1>
-        <p className="mx-auto mt-4 max-w-xl text-slate-600">
-          Watch Seventh-day Adventist worship services, evangelistic meetings, youth programs
-          and special events from across Vanuatu, Solomon Islands, Papua New Guinea and Fiji.
-        </p>
-        <div className="mt-6 flex justify-center gap-3">
-          <Link href="/live" className="rounded bg-sky-600 px-5 py-2 text-white">
-            Watch Live
-          </Link>
-          <Link href="/churches" className="rounded border border-slate-300 px-5 py-2">
-            Browse Churches
-          </Link>
-          <Link href="/videos" className="rounded border border-slate-300 px-5 py-2">
-            Explore Videos
-          </Link>
-        </div>
-        <div className="mt-8 flex flex-wrap justify-center gap-4 text-sm">
-          {COUNTRIES.map((c) => (
-            <Link key={c} href={`/countries/${c.toLowerCase().replace(/\s/g, '-')}`} className="underline">
-              {c}
+      {/* Hero — the banner already carries the wordmark, tagline, country
+          list, and feature callouts, so the only thing added on top is the
+          three working navigation buttons it can't provide on its own. */}
+      <section className="relative h-[280px] sm:h-[360px] md:h-[440px] lg:h-[520px]">
+        <h1 className="sr-only">LOTU.LIVE — Worship Together. Wherever You Are.</h1>
+        <Image
+          src="/hero-banner.jpg"
+          alt="LOTU.LIVE — Worship Together. Wherever You Are. Live streams, inspiring messages, and church services across Vanuatu, Solomon Islands, Papua New Guinea, Fiji and beyond."
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-[30%_center] sm:object-center"
+        />
+        <div className="absolute inset-x-0 bottom-0 flex justify-center pb-6 sm:pb-8">
+          <div className="flex flex-wrap justify-center gap-3 rounded-lg bg-black/40 p-3 backdrop-blur-sm">
+            <Link href="/live" className="rounded bg-sky-600 px-5 py-2 text-white hover:bg-sky-500">
+              Watch Live
             </Link>
-          ))}
+            <Link href="/churches" className="rounded border border-white/70 px-5 py-2 text-white hover:bg-white/10">
+              Browse Churches
+            </Link>
+            <Link href="/videos" className="rounded border border-white/70 px-5 py-2 text-white hover:bg-white/10">
+              Explore Videos
+            </Link>
+          </div>
         </div>
       </section>
 
