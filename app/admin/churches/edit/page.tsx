@@ -118,6 +118,7 @@ export default async function ChurchFormPage({
                   type="email"
                   name="email"
                   placeholder="editor@example.com"
+                  autoComplete="off"
                   required
                   className="flex-1 rounded border border-slate-300 p-2 text-sm"
                 />
