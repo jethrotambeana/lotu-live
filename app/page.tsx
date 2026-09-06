@@ -24,30 +24,34 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero — the banner already carries the wordmark, tagline, country
-          list, and feature callouts, so the only thing added on top is the
-          three working navigation buttons it can't provide on its own. */}
-      <section className="relative h-[280px] sm:h-[360px] md:h-[440px] lg:h-[520px]">
+          list, and feature callouts. Shown at its exact natural aspect
+          ratio (2046:768) so nothing is ever cropped, on any screen size —
+          it simply scales shorter on narrow phones rather than losing
+          content unpredictably. Buttons sit in their own bar below rather
+          than overlaid, since the banner gets too short on mobile to
+          reliably host legible overlay text. */}
+      <section>
         <h1 className="sr-only">LOTU.LIVE — Worship Together. Wherever You Are.</h1>
-        <Image
-          src="/hero-banner.jpg"
-          alt="LOTU.LIVE — Worship Together. Wherever You Are. Live streams, inspiring messages, and church services across Vanuatu, Solomon Islands, Papua New Guinea, Fiji and beyond."
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-[30%_center] sm:object-center"
-        />
-        <div className="absolute inset-x-0 bottom-0 flex justify-center pb-6 sm:pb-8">
-          <div className="flex flex-wrap justify-center gap-3 rounded-lg bg-black/40 p-3 backdrop-blur-sm">
-            <Link href="/live" className="rounded bg-sky-600 px-5 py-2 text-white hover:bg-sky-500">
-              Watch Live
-            </Link>
-            <Link href="/churches" className="rounded border border-white/70 px-5 py-2 text-white hover:bg-white/10">
-              Browse Churches
-            </Link>
-            <Link href="/videos" className="rounded border border-white/70 px-5 py-2 text-white hover:bg-white/10">
-              Explore Videos
-            </Link>
-          </div>
+        <div className="relative aspect-[2046/768] w-full">
+          <Image
+            src="/hero-banner.jpg"
+            alt="LOTU.LIVE — Worship Together. Wherever You Are. Live streams, inspiring messages, and church services across Vanuatu, Solomon Islands, Papua New Guinea, Fiji and beyond."
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+          />
+        </div>
+        <div className="flex flex-wrap justify-center gap-3 bg-slate-900 px-4 py-5">
+          <Link href="/live" className="rounded bg-sky-600 px-5 py-2 text-white hover:bg-sky-500">
+            Watch Live
+          </Link>
+          <Link href="/churches" className="rounded border border-white/70 px-5 py-2 text-white hover:bg-white/10">
+            Browse Churches
+          </Link>
+          <Link href="/videos" className="rounded border border-white/70 px-5 py-2 text-white hover:bg-white/10">
+            Explore Videos
+          </Link>
         </div>
       </section>
 
