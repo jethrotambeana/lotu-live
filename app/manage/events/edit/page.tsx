@@ -1,9 +1,10 @@
-import { requireChurchEditor } from '@/lib/requireChurchEditor';
+import { requireEditor } from '@/lib/requireEditor';
 import { notFound } from 'next/navigation';
 import { saveMyEvent } from '../actions';
 
 export default async function ManageEventFormPage({ searchParams }: { searchParams: { id?: string } }) {
-  const { supabase, churchId } = await requireChurchEditor();
+  const { supabase, scope } = await requireEditor();
+  const scopeColumn = scope.type === 'church' ? 'host_church_id' : 'host_ministry_id';
   const { data: countries } = await supabase.from('countries').select('id, name').order('name');
 
   let event: any = null;
@@ -12,7 +13,7 @@ export default async function ManageEventFormPage({ searchParams }: { searchPara
       .from('events')
       .select('*')
       .eq('id', searchParams.id)
-      .eq('host_church_id', churchId)
+      .eq(scopeColumn, scope.id)
       .single();
     if (!data) return notFound();
     event = data;

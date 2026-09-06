@@ -42,6 +42,29 @@ create table churches (
   created_at timestamptz default now()
 );
 
+create table ministries (
+  id uuid primary key default gen_random_uuid(),
+  slug text unique not null,
+  name text not null,
+  type text not null check (type in (
+    'music_singing', 'media_video', 'livestream_team', 'youth',
+    'outreach', 'prayer', 'childrens', 'other'
+  )),
+  church_id uuid references churches(id),   -- optional; null = independent ministry
+  country_id uuid references countries(id),
+  island_province text,
+  town text,
+  description text,
+  logo_url text,
+  phone text,
+  email text,
+  website text,
+  facebook text,
+  youtube text,
+  approved boolean default true,
+  created_at timestamptz default now()
+);
+
 create table events (
   id uuid primary key default gen_random_uuid(),
   slug text unique not null,
@@ -53,6 +76,10 @@ create table events (
                                         -- a registered church; the public
                                         -- site prefers this over hosted_by
                                         -- when both are present
+  host_ministry_id uuid references ministries(id), -- alternative to
+                                        -- host_church_id when a ministry
+                                        -- (rather than a church) organizes
+                                        -- the event; never both at once
   country_id uuid references countries(id),
   description text,
   venue text,
@@ -116,6 +143,9 @@ create table videos (
   title text not null,
   church_id uuid references churches(id),
   event_id uuid references events(id),
+  ministry_id uuid references ministries(id), -- alternative to church_id
+                                        -- when a ministry posts its own
+                                        -- video rather than a church
   speaker text,
   series text,
   provider text not null check (provider in ('cloudflare','youtube','cloudinary')),
@@ -155,6 +185,54 @@ create table submissions (
   created_at timestamptz default now()
 );
 
+create table event_submissions (
+  id uuid primary key default gen_random_uuid(),
+  event_name text not null,
+  hosted_by text,
+  host_church_id uuid references churches(id),
+  host_ministry_id uuid references ministries(id),
+  country_id uuid references countries(id),
+  island_province text,
+  venue text,
+  town text,
+  start_date date,
+  end_date date,
+  start_time time,
+  end_time time,
+  description text,
+  contact_name text,
+  email text,
+  phone text,
+  website text,
+  facebook text,
+  youtube text,
+  poster_url text,
+  status text default 'pending' check (status in ('pending','approved','rejected')),
+  created_at timestamptz default now()
+);
+
+create table ministry_submissions (
+  id uuid primary key default gen_random_uuid(),
+  ministry_name text not null,
+  type text not null check (type in (
+    'music_singing', 'media_video', 'livestream_team', 'youth',
+    'outreach', 'prayer', 'childrens', 'other'
+  )),
+  church_id uuid references churches(id),
+  country_id uuid references countries(id),
+  island_province text,
+  town text,
+  description text,
+  contact_name text,
+  email text,
+  phone text,
+  website text,
+  facebook text,
+  youtube text,
+  status text default 'pending' check (status in ('pending','approved','rejected')),
+  created_at timestamptz default now()
+);
+
 create table contacts (
   id uuid primary key default gen_random_uuid(),
   name text,
@@ -175,47 +253,71 @@ create table profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   role text default 'viewer' check (role in ('viewer','pending_editor','editor','admin')),
   email text,                          -- synced via handle_new_user trigger
-  church_id uuid references churches(id) -- set once role is pending_editor
+  church_id uuid references churches(id), -- set once role is pending_editor
                                         -- or editor; the one church this
                                         -- account may manage (or is
                                         -- requesting to manage)
+  ministry_id uuid references ministries(id) -- alternative to church_id;
+                                        -- an editor manages EITHER a church
+                                        -- OR a ministry, never both
 );
 create index on profiles (church_id);
+create index on profiles (ministry_id);
+alter table profiles add constraint profiles_single_scope_check
+  check (church_id is null or ministry_id is null);
 
--- Auto-create a profiles row for every new signup. Also checks for an
--- approved church whose contact email matches this signup (and that
+-- Auto-create a profiles row for every new signup. Checks for an approved
+-- church OR ministry whose contact email matches this signup (and that
 -- doesn't already have an editor/pending editor) — if found, the new
 -- account lands in 'pending_editor' rather than plain 'viewer', ready for
--- an admin to Activate in Admin → Submissions. This covers someone
--- signing up AFTER their church was already approved; the reverse order
--- (signing up first) is handled in approveSubmission instead.
+-- an admin to Activate in Admin → Submissions. Churches are checked
+-- first; a signup only ever lands as pending for one or the other. This
+-- covers someone signing up AFTER their church/ministry was already
+-- approved; the reverse order (signing up first) is handled in
+-- approveSubmission / approveMinistrySubmission instead.
 create or replace function public.handle_new_user()
 returns trigger as $$
 declare
   matched_church_id uuid;
+  matched_ministry_id uuid;
 begin
   select c.id into matched_church_id
-  from churches c
+  from public.churches c
   where c.email is not null
     and lower(c.email) = lower(new.email)
     and not exists (
-      select 1 from profiles p
+      select 1 from public.profiles p
       where p.church_id = c.id and p.role in ('editor', 'pending_editor')
     )
   limit 1;
 
-  insert into public.profiles (id, role, email, church_id)
+  if matched_church_id is null then
+    select m.id into matched_ministry_id
+    from public.ministries m
+    where m.email is not null
+      and lower(m.email) = lower(new.email)
+      and not exists (
+        select 1 from public.profiles p
+        where p.ministry_id = m.id and p.role in ('editor', 'pending_editor')
+      )
+    limit 1;
+  end if;
+
+  insert into public.profiles (id, role, email, church_id, ministry_id)
   values (
     new.id,
-    case when matched_church_id is not null then 'pending_editor' else 'viewer' end,
+    case when matched_church_id is not null or matched_ministry_id is not null
+      then 'pending_editor' else 'viewer' end,
     new.email,
-    matched_church_id
+    matched_church_id,
+    matched_ministry_id
   )
   on conflict (id) do nothing;
 
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer
+set search_path = public;
 
 create trigger on_auth_user_created
   after insert on auth.users
@@ -228,6 +330,10 @@ create index on videos (recorded_date desc);
 create index on churches (country_id);
 create index on events (start_date);
 create index on events (host_church_id);
+create index on events (host_ministry_id);
+create index on videos (ministry_id);
+create index on ministries (church_id);
+create index on ministries (country_id);
 
 -- Basic full-text search (Phase 1, per doc section 20)
 alter table churches add column search_vector tsvector
@@ -242,27 +348,38 @@ create index on videos using gin (search_vector);
 
 -- Row Level Security: public read on published content, writes admin-only
 alter table churches enable row level security;
+alter table ministries enable row level security;
 alter table events enable row level security;
 alter table livestreams enable row level security;
 alter table videos enable row level security;
 alter table submissions enable row level security;
+alter table event_submissions enable row level security;
+alter table ministry_submissions enable row level security;
 alter table profiles enable row level security;
 
 create policy "public read churches" on churches for select using (true);
+create policy "public read approved ministries" on ministries for select using (approved = true);
 create policy "public read approved events" on events for select using (approved = true);
 create policy "public read visible livestreams" on livestreams for select using (visible = true);
 create policy "public read approved videos" on videos for select using (approved = true);
--- submissions: insert-only from the public; admins can read (see below),
--- no read access for anyone else.
+-- submissions/event_submissions/ministry_submissions: insert-only from the
+-- public; admins can read (see below), no read access for anyone else.
 create policy "public insert submissions" on submissions for insert with check (true);
 create policy "admin read submissions" on submissions for select using (
   exists (select 1 from profiles where id = auth.uid() and role = 'admin')
 );
+create policy "public insert event submissions" on event_submissions for insert with check (true);
+create policy "admin read event submissions" on event_submissions for select using (public.is_admin());
+create policy "admin manage event submissions" on event_submissions for update using (public.is_admin());
+create policy "public insert ministry submissions" on ministry_submissions for insert with check (true);
+create policy "admin read ministry submissions" on ministry_submissions for select using (public.is_admin());
+create policy "admin manage ministry submissions" on ministry_submissions for update using (public.is_admin());
 
 -- Admin write policies (requires profiles.role = 'admin')
 create policy "admin write churches" on churches for all using (
   exists (select 1 from profiles where id = auth.uid() and role = 'admin')
 );
+create policy "admin write ministries" on ministries for all using (public.is_admin());
 create policy "admin write events" on events for all using (
   exists (select 1 from profiles where id = auth.uid() and role = 'admin')
 );
@@ -323,6 +440,28 @@ create policy "editor manage own videos" on videos for all using (
   exists (
     select 1 from profiles
     where id = auth.uid() and role = 'editor' and church_id = videos.church_id
+  )
+);
+
+-- Ministry editors: parallel scoping to the church editor policies above.
+-- Church editors are unaffected — these are additional policies, not
+-- replacements.
+create policy "editor update own ministry" on ministries for update using (
+  exists (
+    select 1 from profiles
+    where id = auth.uid() and role = 'editor' and ministry_id = ministries.id
+  )
+);
+create policy "editor manage own ministry videos" on videos for all using (
+  exists (
+    select 1 from profiles
+    where id = auth.uid() and role = 'editor' and ministry_id is not null and ministry_id = videos.ministry_id
+  )
+);
+create policy "editor manage own ministry events" on events for all using (
+  exists (
+    select 1 from profiles
+    where id = auth.uid() and role = 'editor' and ministry_id is not null and ministry_id = events.host_ministry_id
   )
 );
 

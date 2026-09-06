@@ -38,6 +38,26 @@ section in the left sidebar to actually manage anything.
   public `/churches` page filters by whatever values are actually in use,
   so leaving it blank means that church won't be reachable via that filter.
 
+### Managing Ministries
+
+**Admin → Ministries**
+
+A ministry is a team or group — a singing group, a video production team,
+a livestream team, a youth group, and so on. Same pattern as churches:
+
+- **Type**: pick from a fixed dropdown (Music/Singing, Media/Video,
+  Livestream Team, Youth, Outreach, Prayer, Children's, Other).
+- **Part of Church**: optional. A ministry can belong to one specific
+  church, or be independent (e.g. a regional youth ministry not tied to a
+  single congregation) — just leave this as "None / Independent."
+- **Edit** / **Delete**: available from the ministry list. Deleting is
+  blocked (with a clear message and an Unlink Editor button, same as
+  churches) if the ministry still has events, videos, or a linked editor
+  account attached.
+- A ministry does **not** have its own livestreams — it can post videos
+  and organize events, but an actual live broadcast is still tied to a
+  church or set up directly by an admin.
+
 ### Managing Events
 
 **Admin → Events**
@@ -45,16 +65,18 @@ section in the left sidebar to actually manage anything.
 Same pattern as churches. Additional fields: venue, start/end date and
 time, and a status (Upcoming / Current / Completed) — set this manually as
 an event approaches, happens, and finishes. The public `/events` page lets
-visitors filter by Country and by this same Status field.
+visitors filter by Country and by this same Status field. An event can
+optionally be hosted by a church, a ministry, or neither (in which case
+use the free-text "Hosted By" field for an outside organizer's name).
 
-**Approving editor submissions**: events created or edited by a church
-editor (via `/manage`) show a "Pending Approval" badge and stay hidden
-from the public site until you click **Approve** in the list (or check
-the Approved box in the edit form). This applies to *every* editor save —
-even an edit to an event you already approved goes back to pending, so
-it's worth glancing at this list periodically rather than only when a
-brand-new event shows up. Events you create directly here are approved by
-default.
+**Approving editor submissions**: events created or edited by a church or
+ministry editor (via `/manage`) show a "Pending Approval" badge and stay
+hidden from the public site until you click **Approve** in the list (or
+check the Approved box in the edit form). This applies to *every* editor
+save — even an edit to an event you already approved goes back to
+pending, so it's worth glancing at this list periodically rather than
+only when a brand-new event shows up. Events you create directly here are
+approved by default.
 
 ### Managing Livestreams
 
@@ -174,17 +196,26 @@ field on a record just means that record won't surface under that filter.
 `/contact` form. Read-only; there's no reply-from-the-panel feature, so
 reply via your own email using the address shown.
 
-### Handling Church Submissions
+### Handling Submissions
 
-**Admin → Submissions** — shows churches submitted via the public
-`/submit` form ("Add Your Church").
+**Admin → Submissions** — one page, four sections:
 
-- **Approve**: automatically creates a real church profile from the
-  submitted details and marks the submission as approved. You can then
-  edit that new church record under Admin → Churches to fill in anything
-  the submitter left out.
-- **Reject**: marks it rejected. It stays in the list for your records but
-  won't create a church.
+- **Pending Editor Activations** (at the top) — see "Editor Accounts"
+  below.
+- **Church Submissions** — from `/submit` ("Add Your Church").
+- **Event Submissions** — from `/submit-event` ("Add Your Event"). Can
+  optionally be linked to a registered church or ministry, or list a
+  free-text organizer name.
+- **Ministry Submissions** — from `/submit-ministry` ("Add Your
+  Ministry"). Can optionally be linked to a registered church.
+
+For all three: **Approve** creates the real record (church, event, or
+ministry) from the submitted details and marks the submission as
+approved — event submissions go straight to fully approved and visible,
+since your review of the submission itself is the approval step. Church
+and ministry approvals may also flag a matching-email account for editor
+activation (see below). **Reject** marks it rejected; it stays in the
+list for your records but creates nothing.
 
 ### Managing Admin Access
 
@@ -212,12 +243,13 @@ update profiles set role = 'viewer' where id = 'THEIR-UUID-HERE';
 
 Click **Log out** at the bottom of the admin sidebar.
 
-### Church Editor Accounts
+### Editor Accounts (Church or Ministry)
 
-Beyond full admins, there's a lighter self-service tier: **church editors**.
-A church editor can log in at `/login` but instead of landing on `/admin`,
-they land on `/manage` — a scoped dashboard limited to exactly three
-things:
+Beyond full admins, there's a lighter self-service tier: **editors**. An
+editor is scoped to exactly one church OR one ministry — never both. They
+log in at `/login` but instead of landing on `/admin`, they land on
+`/manage` — a dashboard limited to exactly three things, automatically
+showing "Church Profile" or "Ministry Profile" depending on their scope:
 
 > **One-time setup**: the approval emails below require a `RESEND_API_KEY`
 > environment variable in Netlify. This is separate from the SMTP
@@ -228,61 +260,66 @@ things:
 > exactly the same, the emails just silently don't send (logged in
 > Netlify's function logs, not a failure).
 
-- **Church Profile** — full edit access to their own church's public
-  listing (name, contact info, description, worship times, logo, etc.).
-  There is nothing streaming-related on this form at all.
-- **Events** — can add, edit, and delete their own church's events. Any
-  new event or edit to an existing one is saved as **pending approval**
-  and stays off the public site until an admin approves it (see "Managing
-  Events" above). There is no way for an editor to set up or link a
-  livestream to an event — that stays entirely admin-only.
-- **Videos** — can add, edit, and delete their own church's videos. Same
-  approval gate as events: every save needs admin sign-off before it's
-  public (see "Managing Videos" above).
+- **Church/Ministry Profile** — full edit access to their own public
+  listing (name, contact info, description, logo, etc.). There is nothing
+  streaming-related on this form at all.
+- **Events** — can add, edit, and delete their own events. Any new event
+  or edit to an existing one is saved as **pending approval** and stays
+  off the public site until an admin approves it (see "Managing Events"
+  above). There is no way for an editor to set up or link a livestream to
+  an event — that stays entirely admin-only.
+- **Videos** — can add, edit, and delete their own videos. Same approval
+  gate as events: every save needs admin sign-off before it's public (see
+  "Managing Videos" above).
 
 **Editors have no access to Livestreams whatsoever** — not a reduced
 view, not even a read-only one. That entire area of the site, including
 provider IDs and any RTMP details, is admin-only, full stop.
 
-**How someone becomes a church editor (two admin-reviewed steps):**
+**How someone becomes an editor (two admin-reviewed steps):**
 
-1. Someone submits their church via the public `/submit` form.
+1. Someone submits their church or ministry via the public `/submit` or
+   `/submit-ministry` form.
 2. You **Approve** that submission under Admin → Submissions. This
-   creates the church record and sends the submitter an email confirming
-   their church is live, with a link to it and instructions to create an
+   creates the church/ministry record and sends the submitter an email
+   confirming it's live, with a link to it and instructions to create an
    account at `/signup` if they want to manage it themselves.
 3. They create an account using that **same email address** (any time —
-   before or after their church was submitted/approved).
-4. The system checks for a matching approved church with no editor
-   attached yet. If found, their account lands in a **pending** state —
-   not yet an editor, no `/manage` access — and shows up under **Pending
-   Editor Activations** at the top of the Submissions page.
+   before or after their submission was approved).
+4. The system checks for a matching approved church or ministry with no
+   editor attached yet. If found, their account lands in a **pending**
+   state — not yet an editor, no `/manage` access — and shows up under
+   **Pending Editor Activations** at the top of the Submissions page.
 5. You click **Activate**. This is the step that actually grants access,
    and it sends them a second email confirming they can log in.
 
-An email match alone never grants access — both the church approval and
-the editor activation are separate, explicit clicks you make. This is
+An email match alone never grants access — both the submission approval
+and the editor activation are separate, explicit clicks you make. This is
 deliberate: matching by email is a convenience for finding the right
 account, not a substitute for you confirming it's the right person.
 
-**If auto-matching didn't happen** (e.g. they used a different email, or
-the domain-matching didn't pick it up), link them manually — find their
-UUID under Authentication → Users, find the church's UUID under Admin →
-Churches → Edit (visible in the URL), then in Supabase SQL Editor:
+**If auto-matching didn't happen** (e.g. they used a different email),
+link them manually — find their UUID under Authentication → Users, find
+the church/ministry's UUID under its Edit page (visible in the URL), then
+in Supabase SQL Editor:
 ```sql
+-- For a church editor:
 update profiles set role = 'editor', church_id = 'CHURCH-UUID-HERE' where id = 'THEIR-UUID-HERE';
+-- For a ministry editor:
+update profiles set role = 'editor', ministry_id = 'MINISTRY-UUID-HERE' where id = 'THEIR-UUID-HERE';
 ```
 (This skips the pending step and grants access immediately — appropriate
-when you're manually confirming it yourself anyway.)
+when you're manually confirming it yourself anyway. A profile can never
+have both `church_id` and `ministry_id` set — the database enforces this.)
 
 **To remove editor access** without deleting their account:
 ```sql
-update profiles set role = 'viewer', church_id = null where id = 'THEIR-UUID-HERE';
+update profiles set role = 'viewer', church_id = null, ministry_id = null where id = 'THEIR-UUID-HERE';
 ```
 
 This is enforced both in the UI and, as a backstop, via Row Level Security
 policies directly on the database — even a modified request couldn't reach
-another church's data, publish content without approval, or touch
+another church/ministry's data, publish content without approval, or touch
 livestreams.
 
 ---

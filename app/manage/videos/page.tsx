@@ -1,14 +1,16 @@
-import { requireChurchEditor } from '@/lib/requireChurchEditor';
+import { requireEditor } from '@/lib/requireEditor';
 import Link from 'next/link';
 import { deleteMyVideo } from './actions';
 import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
 
 export default async function ManageVideosPage() {
-  const { supabase, churchId } = await requireChurchEditor();
+  const { supabase, scope } = await requireEditor();
+  const scopeColumn = scope.type === 'church' ? 'church_id' : 'ministry_id';
+
   const { data: videos } = await supabase
     .from('videos')
     .select('id, title, provider, speaker, recorded_date, approved')
-    .eq('church_id', churchId)
+    .eq(scopeColumn, scope.id)
     .order('recorded_date', { ascending: false });
 
   return (
@@ -61,4 +63,3 @@ export default async function ManageVideosPage() {
     </div>
   );
 }
-

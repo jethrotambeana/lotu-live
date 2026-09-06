@@ -1,12 +1,14 @@
-import { requireChurchEditor } from '@/lib/requireChurchEditor';
+import { requireEditor } from '@/lib/requireEditor';
 import { notFound } from 'next/navigation';
 import { saveMyVideo } from '../actions';
 
 export default async function ManageVideoFormPage({ searchParams }: { searchParams: { id?: string } }) {
-  const { supabase, churchId } = await requireChurchEditor();
+  const { supabase, scope } = await requireEditor();
+  const videoScopeColumn = scope.type === 'church' ? 'church_id' : 'ministry_id';
+  const eventScopeColumn = scope.type === 'church' ? 'host_church_id' : 'host_ministry_id';
 
   const [{ data: events }, { data: categories }] = await Promise.all([
-    supabase.from('events').select('id, name').eq('host_church_id', churchId).order('name'),
+    supabase.from('events').select('id, name').eq(eventScopeColumn, scope.id).order('name'),
     supabase.from('categories').select('id, name').order('name'),
   ]);
 
@@ -18,7 +20,7 @@ export default async function ManageVideoFormPage({ searchParams }: { searchPara
       .from('videos')
       .select('*')
       .eq('id', searchParams.id)
-      .eq('church_id', churchId)
+      .eq(videoScopeColumn, scope.id)
       .single();
     if (!data) return notFound();
     video = data;

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { deriveYouTubeThumbnail, deriveCloudflareThumbnail } from '@/lib/thumbnails';
-import { requireChurchEditor } from '@/lib/requireChurchEditor';
+import { requireEditor } from '@/lib/requireEditor';
 
 type VideoProvider = 'cloudflare' | 'youtube' | 'cloudinary';
 
@@ -16,7 +16,9 @@ function slugify(name: string) {
 }
 
 export async function saveMyVideo(formData: FormData) {
-  const { supabase, churchId } = await requireChurchEditor();
+  const { supabase, scope } = await requireEditor();
+  const videoScopeColumn = scope.type === 'church' ? 'church_id' : 'ministry_id';
+  const eventScopeColumn = scope.type === 'church' ? 'host_church_id' : 'host_ministry_id';
 
   const id = (formData.get('id') as string) || null;
   const title = formData.get('title') as string;
@@ -30,7 +32,7 @@ export async function saveMyVideo(formData: FormData) {
     else if (provider === 'cloudflare') thumbnail = deriveCloudflareThumbnail(providerVideoId);
   }
 
-  // event_id must belong to this editor's own church.
+  // event_id must belong to this editor's own church/ministry.
   const requestedEventId = (formData.get('event_id') as string) || null;
   let eventId: string | null = null;
   if (requestedEventId) {
@@ -38,15 +40,16 @@ export async function saveMyVideo(formData: FormData) {
       .from('events')
       .select('id')
       .eq('id', requestedEventId)
-      .eq('host_church_id', churchId)
+      .eq(eventScopeColumn, scope.id)
       .single();
     eventId = ownEvent?.id ?? null;
   }
 
-  const record = {
+  const record: Record<string, unknown> = {
     title,
     slug: (formData.get('slug') as string) || slugify(title),
-    church_id: churchId, // always forced — never trust a client-supplied church id
+    church_id: scope.type === 'church' ? scope.id : null,
+    ministry_id: scope.type === 'ministry' ? scope.id : null,
     event_id: eventId,
     speaker: (formData.get('speaker') as string) || null,
     series: (formData.get('series') as string) || null,
@@ -65,7 +68,7 @@ export async function saveMyVideo(formData: FormData) {
   let videoId = id;
 
   if (id) {
-    const { error } = await supabase.from('videos').update(record).eq('id', id).eq('church_id', churchId);
+    const { error } = await supabase.from('videos').update(record).eq('id', id).eq(videoScopeColumn, scope.id);
     if (error) {
       console.error('Failed to update video (editor):', error);
       throw new Error(`Failed to save: ${error.message}`);
@@ -96,9 +99,10 @@ export async function saveMyVideo(formData: FormData) {
 }
 
 export async function deleteMyVideo(formData: FormData) {
-  const { supabase, churchId } = await requireChurchEditor();
+  const { supabase, scope } = await requireEditor();
+  const videoScopeColumn = scope.type === 'church' ? 'church_id' : 'ministry_id';
   const id = formData.get('id') as string;
-  await supabase.from('videos').delete().eq('id', id).eq('church_id', churchId);
+  await supabase.from('videos').delete().eq('id', id).eq(videoScopeColumn, scope.id);
   revalidatePath('/manage/videos');
   revalidatePath('/videos');
   revalidatePath('/');

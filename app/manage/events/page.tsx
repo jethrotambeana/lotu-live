@@ -1,14 +1,16 @@
-import { requireChurchEditor } from '@/lib/requireChurchEditor';
+import { requireEditor } from '@/lib/requireEditor';
 import Link from 'next/link';
 import { deleteMyEvent } from './actions';
 import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
 
 export default async function ManageEventsPage() {
-  const { supabase, churchId } = await requireChurchEditor();
+  const { supabase, scope } = await requireEditor();
+  const scopeColumn = scope.type === 'church' ? 'host_church_id' : 'host_ministry_id';
+
   const { data: events } = await supabase
     .from('events')
     .select('id, name, status, start_date, town, approved')
-    .eq('host_church_id', churchId)
+    .eq(scopeColumn, scope.id)
     .order('start_date', { ascending: true });
 
   return (
@@ -60,4 +62,3 @@ export default async function ManageEventsPage() {
     </div>
   );
 }
-

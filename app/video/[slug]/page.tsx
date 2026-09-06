@@ -8,7 +8,7 @@ export default async function VideoPage({ params }: { params: { slug: string } }
   const supabase = createClient();
   const { data: video } = await supabase
     .from('videos')
-    .select('*, churches(name, slug), events(name, slug)')
+    .select('*, churches(name, slug), events(name, slug), ministries(name, slug)')
     .eq('slug', params.slug)
     .single();
   if (!video) return notFound();
@@ -40,11 +40,16 @@ export default async function VideoPage({ params }: { params: { slug: string } }
         {categories.length > 0 && <span>{categories.join(', ')}</span>}
       </div>
 
-      {(video.churches || video.events) && (
+      {(video.churches || video.events || video.ministries) && (
         <div className="mt-2 flex flex-wrap gap-4 text-sm">
           {video.churches && (
             <Link href={`/church/${video.churches.slug}`} className="text-sky-600 underline">
               {video.churches.name}
+            </Link>
+          )}
+          {video.ministries && (
+            <Link href={`/ministry/${video.ministries.slug}`} className="text-sky-600 underline">
+              {video.ministries.name}
             </Link>
           )}
           {video.events && (

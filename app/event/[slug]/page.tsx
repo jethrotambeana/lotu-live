@@ -11,7 +11,7 @@ export default async function EventPage({ params }: { params: { slug: string } }
   const supabase = createClient();
   const { data: event } = await supabase
     .from('events')
-    .select('*, countries(name), churches(name, slug)')
+    .select('*, countries(name), churches(name, slug), ministries(name, slug)')
     .eq('slug', params.slug)
     .single();
   if (!event) return notFound();
@@ -55,6 +55,13 @@ export default async function EventPage({ params }: { params: { slug: string } }
               Hosted by{' '}
               <Link href={`/church/${event.churches.slug}`} className="text-sky-600 underline">
                 {event.churches.name}
+              </Link>
+            </p>
+          ) : event.ministries ? (
+            <p className="text-sm text-slate-500">
+              Hosted by{' '}
+              <Link href={`/ministry/${event.ministries.slug}`} className="text-sky-600 underline">
+                {event.ministries.name}
               </Link>
             </p>
           ) : (

@@ -97,11 +97,21 @@ export default async function HomePage() {
 
       {/* Submission CTA */}
       <section className="bg-slate-50 px-4 py-12 text-center">
-        <h2 className="text-xl font-semibold">Is your church broadcasting?</h2>
-        <p className="mt-2 text-slate-600">Add your church or submit your stream to LOTU.LIVE.</p>
-        <Link href="/submit" className="mt-4 inline-block rounded bg-sky-600 px-5 py-2 text-white">
-          Add Your Church
-        </Link>
+        <h2 className="text-xl font-semibold">Get Involved</h2>
+        <p className="mt-2 text-slate-600">
+          Add your church, list an upcoming event, or showcase your ministry on LOTU.LIVE.
+        </p>
+        <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <Link href="/submit" className="rounded bg-sky-600 px-5 py-2 text-white">
+            Add Your Church
+          </Link>
+          <Link href="/submit-event" className="rounded border border-slate-300 px-5 py-2">
+            Add Your Event
+          </Link>
+          <Link href="/submit-ministry" className="rounded border border-slate-300 px-5 py-2">
+            Add Your Ministry
+          </Link>
+        </div>
       </section>
     </>
   );

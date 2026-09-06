@@ -41,17 +41,26 @@ site.
     Language.
   - `/live` — filter by Country, Type (Church/Event/Organisation), Status,
     Language.
+  - `/ministries` — filter by Country, Type (Music/Singing, Media/Video,
+    Livestream Team, Youth, Outreach, Prayer, Children's, Other).
   - Filter option lists for Island/Province and Language are derived from
     whatever values actually exist in the data, not a fixed list.
 - Other public pages: `/countries` (+ per-country pages), `/about`,
   `/contact` (working form → `contacts` table), `/submit` (public church
-  submission form → `submissions` table).
-- Detail pages: `/church/[slug]`, `/event/[slug]`, `/watch/[slug]`,
-  `/video/[slug]`.
+  submission form → `submissions` table), `/submit-event` (public event
+  submission → `event_submissions` table), `/submit-ministry` (public
+  ministry submission → `ministry_submissions` table). All three follow
+  the same pattern: public inserts a request, an admin reviews and
+  approves it under Admin → Submissions, which creates the real row.
+- Detail pages: `/church/[slug]`, `/ministry/[slug]`, `/event/[slug]`,
+  `/watch/[slug]`, `/video/[slug]`.
 - Admin panel at `/admin`, protected by Supabase Auth + role check:
   - **Dashboard** — summary counts.
   - **Churches** — list, add, edit, delete.
-  - **Events** — list, add, edit, delete.
+  - **Ministries** — list, add, edit, delete. A ministry can optionally
+    belong to one church, or stand alone (e.g. a regional youth ministry).
+  - **Events** — list, add, edit, delete. Can be hosted by a church, a
+    ministry, or neither (free-text organizer name via `hosted_by`).
   - **Livestreams** — list, add, edit, delete, show/hide toggle. Provider
     field is a dropdown (Cloudflare / YouTube / Facebook / HLS) with a
     single ID/URL field — never raw embed HTML, for security. Preview
@@ -65,20 +74,27 @@ site.
     Categories are assigned via checkboxes backed by the
     `video_categories` join table.
   - **Messages** — read-only list of `/contact` submissions.
-  - **Submissions** — church sign-up requests from `/submit`, with
-    Approve (auto-creates a church record) / Reject actions.
+  - **Submissions** — three review queues on one page: church submissions
+    (from `/submit`), event submissions (from `/submit-event`), and
+    ministry submissions (from `/submit-ministry`), each with
+    Approve/Reject. Approving creates the real record; event submissions
+    go straight to approved (the admin's review IS the approval), while
+    church/ministry approval may also flag a matching account for editor
+    activation (see below). A "Pending Editor Activations" section sits
+    above all three queues.
 - `/login` and `/signup` pages for Supabase Auth email/password accounts.
   Every signup auto-creates a `profiles` row (`role = 'viewer'` by default,
   via a database trigger) — signing up alone grants no special access.
-- **Church editor accounts** (`/manage`): a lighter, self-service tier
-  below full admin. A user with `role = 'editor'` and a linked `church_id`
-  can manage their own church's profile, events, and videos — but **not**
-  livestreams, which remain admin-only end to end (setup, provider IDs,
-  RTMP credentials — see Admin Guide's "Managing Livestreams"). Getting
-  there is a two-step, admin-reviewed process: (1) a church submission is
-  approved, which emails the submitter a link to their new page and
-  instructions to sign up; (2) once they sign up with a matching email,
-  their account lands in `pending_editor` — visible under Admin →
+- **Editor accounts** (`/manage`): a lighter, self-service tier below full
+  admin, for either a church OR a ministry (never both — enforced by a
+  database constraint). Whichever one a user's `profiles` row is scoped
+  to, `/manage` shows the matching profile/events/videos dashboard. Either
+  way, livestreams remain admin-only end to end (setup, provider IDs, RTMP
+  credentials — see Admin Guide's "Managing Livestreams"). Getting there
+  is a two-step, admin-reviewed process: (1) a church or ministry
+  submission is approved, which emails the submitter a link to their new
+  page and instructions to sign up; (2) once they sign up with a matching
+  email, their account lands in `pending_editor` — visible under Admin →
   Submissions — until an admin explicitly clicks **Activate**, which sends
   a second email confirming they can log in. An email match alone never
   grants access; both approvals are manual, human steps.
@@ -118,6 +134,10 @@ site.
   what's listed above (e.g. combining country + category together where
   relevant).
 - Notifications, favorites, managed/native streaming.
+- Ministries don't have their own livestreams (no `ministry_id` on
+  `livestreams`) — a "livestream ministry" can post videos and organize
+  events, but an actual live broadcast stays tied to a church or is
+  admin-managed directly.
 
 ## 4. Project Structure
 
@@ -127,6 +147,8 @@ app/
   live/page.tsx             Live directory, with filter bar
   churches/page.tsx          Church directory, with filter bar
   church/[slug]/page.tsx     Church profile
+  ministries/page.tsx        Ministry directory, with filter bar
+  ministry/[slug]/page.tsx   Ministry profile
   events/page.tsx            Event listing, with filter bar
   event/[slug]/page.tsx      Event profile
   countries/page.tsx         Country index
@@ -137,27 +159,33 @@ app/
   about/page.tsx             About page
   contact/page.tsx           Contact form
   submit/page.tsx            Public church submission form
+  submit-event/page.tsx      Public event submission form
+  submit-ministry/page.tsx   Public ministry submission form
   login/page.tsx             Admin login
   signup/page.tsx             Admin account creation
   admin/
     layout.tsx               Auth guard + sidebar nav
     page.tsx                 Dashboard
     churches/                List, add/edit form, actions
+    ministries/              List, add/edit form, actions
     events/                  List, add/edit form, actions
     livestreams/             List, add/edit form, actions (thumbnail auto-fill)
     videos/                  List, add/edit form, actions (thumbnail auto-fill, categories)
     messages/page.tsx        Contact messages list
-    submissions/             Church submissions + approve/reject actions
-                              (approve auto-links a matching-email account
-                              as the new church's editor)
+    submissions/             Church/event/ministry submissions + approve/
+                              reject actions, plus Pending Editor
+                              Activations (approve may flag a matching-
+                              email account for editor activation)
   manage/
-    layout.tsx               Editor auth guard + sidebar nav (Church
-                              Profile, Events, Videos — no Livestreams)
-    page.tsx                 Own church profile form, actions.ts
+    layout.tsx               Editor auth guard + sidebar nav (Profile,
+                              Events, Videos — no Livestreams), scope-aware
+                              (church or ministry)
+    page.tsx                 Own profile form (church or ministry
+                              depending on scope), actions.ts
     events/                  List, add/edit form, actions — scoped to own
-                              church; every save sets approved = false
+                              church or ministry; every save sets approved = false
     videos/                  List, add/edit form, actions — scoped to own
-                              church; every save sets approved = false
+                              church or ministry; every save sets approved = false
 lib/
   supabaseClient.ts          Browser Supabase client
   supabaseServer.ts          Server Component Supabase client (cookie-aware)
@@ -167,13 +195,17 @@ lib/
   thumbnails.ts              Shared YouTube/Cloudflare thumbnail derivation,
                               used by livestreams, videos, and manage actions
   email.ts                   Resend API wrapper for transactional emails
-                              (church-approved, editor-activated)
+                              (church/ministry-approved, editor-activated)
   requireAdmin.ts            Shared admin auth check
-  requireChurchEditor.ts     Shared church-editor auth check (role='editor'
-                              + church_id), used by all /manage routes
+  requireChurchEditor.ts     Original church-only auth check — superseded
+                              by requireEditor.ts for /manage, kept as-is
+  requireEditor.ts           Generalized editor auth check supporting
+                              either a church or ministry scope
 components/
   LiveCard.tsx, StreamPlayer.tsx, ContactForm.tsx,
-  SubmitChurchForm.tsx, LogoutButton.tsx, FilterBar.tsx
+  SubmitChurchForm.tsx, SubmitEventForm.tsx, SubmitMinistryForm.tsx,
+  ChurchCard.tsx, MinistryCard.tsx, EventCard.tsx, VideoCard.tsx,
+  LogoutButton.tsx, FilterBar.tsx, ConfirmSubmitButton.tsx
 sql/
   schema.sql                 Full DB schema, RLS policies, seed data
 middleware.ts                 Keeps Supabase auth session refreshed

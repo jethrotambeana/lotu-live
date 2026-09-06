@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireChurchEditor } from '@/lib/requireChurchEditor';
+import { requireEditor } from '@/lib/requireEditor';
 
 function slugify(name: string) {
   return name
@@ -13,13 +13,15 @@ function slugify(name: string) {
 }
 
 export async function saveMyEvent(formData: FormData) {
-  const { supabase, churchId } = await requireChurchEditor();
+  const { supabase, scope } = await requireEditor();
+  const scopeColumn = scope.type === 'church' ? 'host_church_id' : 'host_ministry_id';
   const id = formData.get('id') as string | null;
 
-  const record = {
+  const record: Record<string, unknown> = {
     name: formData.get('name') as string,
     slug: (formData.get('slug') as string) || slugify(formData.get('name') as string),
-    host_church_id: churchId, // always forced — never trust a client-supplied church id
+    host_church_id: scope.type === 'church' ? scope.id : null,
+    host_ministry_id: scope.type === 'ministry' ? scope.id : null,
     country_id: (formData.get('country_id') as string) || null,
     description: (formData.get('description') as string) || null,
     venue: (formData.get('venue') as string) || null,
@@ -42,7 +44,7 @@ export async function saveMyEvent(formData: FormData) {
 
   let query;
   if (id) {
-    query = supabase.from('events').update(record).eq('id', id).eq('host_church_id', churchId);
+    query = supabase.from('events').update(record).eq('id', id).eq(scopeColumn, scope.id);
   } else {
     query = supabase.from('events').insert(record);
   }
@@ -58,9 +60,10 @@ export async function saveMyEvent(formData: FormData) {
 }
 
 export async function deleteMyEvent(formData: FormData) {
-  const { supabase, churchId } = await requireChurchEditor();
+  const { supabase, scope } = await requireEditor();
+  const scopeColumn = scope.type === 'church' ? 'host_church_id' : 'host_ministry_id';
   const id = formData.get('id') as string;
-  await supabase.from('events').delete().eq('id', id).eq('host_church_id', churchId);
+  await supabase.from('events').delete().eq('id', id).eq(scopeColumn, scope.id);
   revalidatePath('/manage/events');
   revalidatePath('/events');
 }
