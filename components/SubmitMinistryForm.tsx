@@ -61,7 +61,10 @@ export default function SubmitMinistryForm() {
 
   const field = (key: keyof typeof form, label: string, required = false) => (
     <div>
-      <label className="mb-1 block text-sm font-medium">{label}</label>
+      <label className="mb-1 block text-sm font-medium">
+        {label}
+        {required && <span className="text-red-600"> *</span>}
+      </label>
       <input
         required={required}
         value={form[key]}
@@ -73,6 +76,9 @@ export default function SubmitMinistryForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <p className="text-xs text-slate-500">
+        Fields marked <span className="text-red-600">*</span> are required.
+      </p>
       {field('ministry_name', 'Ministry Name', true)}
 
       <div>
@@ -107,7 +113,9 @@ export default function SubmitMinistryForm() {
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">Country</label>
+        <label className="mb-1 block text-sm font-medium">
+          Country<span className="text-red-600"> *</span>
+        </label>
         <select
           required
           value={form.country_id}
