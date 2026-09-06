@@ -237,6 +237,15 @@ toggle so a long history doesn't clutter the page.
 
 ### Managing Admin Access
 
+> **Bootstrapping the very first admin**: since `/signup` is public and
+> used by regular church/ministry contacts too, it no longer shows any
+> SQL instructions on screen (that was confusing for ordinary signups).
+> If you're setting this project up fresh and there's no admin account
+> yet at all, the process is exactly the same as below — sign up
+> normally, find your own UUID, then run the SQL yourself. There's
+> nothing special about the "first" admin beyond that no one else can do
+> step 3 for you yet.
+
 There's no in-panel "invite an admin" button yet — this is done directly
 in Supabase:
 

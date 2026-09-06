@@ -28,20 +28,21 @@ export default function SignupPage() {
       <div className="mx-auto max-w-sm px-4 py-16">
         <h1 className="mb-4 text-2xl font-bold">Check your email</h1>
         <p className="text-slate-600">
-          We sent a confirmation link to <strong>{email}</strong>. Click it, then ask an existing
-          admin to grant you access — or if this is the very first account, run this in
-          Supabase's SQL Editor (find your user ID under Authentication → Users):
+          We sent a confirmation link to <strong>{email}</strong>. Click it to confirm your
+          account.
         </p>
-        <pre className="mt-4 overflow-x-auto rounded bg-slate-100 p-3 text-xs">
-{`insert into profiles (id, role) values ('YOUR-USER-UUID', 'admin');`}
-        </pre>
+        <p className="mt-3 text-slate-600">
+          If this account is for managing a church, event, or ministry you've submitted, an
+          administrator will activate it once your submission is approved — you'll get a separate
+          email when that's ready.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-sm px-4 py-16">
-      <h1 className="mb-6 text-2xl font-bold">Create Admin Account</h1>
+      <h1 className="mb-6 text-2xl font-bold">Create Account</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium">Email</label>
