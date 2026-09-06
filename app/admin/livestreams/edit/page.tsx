@@ -3,9 +3,10 @@ import { saveLivestream } from '../actions';
 
 export default async function LivestreamFormPage({ searchParams }: { searchParams: { id?: string } }) {
   const supabase = createClient();
-  const [{ data: countries }, { data: churches }, { data: events }] = await Promise.all([
+  const [{ data: countries }, { data: churches }, { data: ministries }, { data: events }] = await Promise.all([
     supabase.from('countries').select('id, name').order('name'),
     supabase.from('churches').select('id, name').order('name'),
+    supabase.from('ministries').select('id, name').order('name'),
     supabase.from('events').select('id, name').order('name'),
   ]);
 
@@ -28,6 +29,7 @@ export default async function LivestreamFormPage({ searchParams }: { searchParam
           <label className="mb-1 block text-sm font-medium">Type</label>
           <select name="type" defaultValue={stream?.type ?? 'church'} className="w-full rounded border border-slate-300 p-2">
             <option value="church">Church</option>
+            <option value="ministry">Ministry</option>
             <option value="event">Event</option>
             <option value="organisation">Organisation</option>
           </select>
@@ -40,6 +42,18 @@ export default async function LivestreamFormPage({ searchParams }: { searchParam
             {(churches ?? []).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium">Ministry (if applicable)</label>
+          <select name="ministry_id" defaultValue={stream?.ministry_id ?? ''} className="w-full rounded border border-slate-300 p-2">
+            <option value="">— None —</option>
+            {(ministries ?? []).map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
               </option>
             ))}
           </select>

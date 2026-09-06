@@ -88,7 +88,10 @@ export async function approveSubmission(formData: FormData) {
   }
 
   await matchEditorCandidate(supabase, submission.email, { type: 'church', id: newChurch.id });
-  await supabase.from('submissions').update({ status: 'approved' }).eq('id', id);
+  await supabase
+    .from('submissions')
+    .update({ status: 'approved', updated_at: new Date().toISOString() })
+    .eq('id', id);
 
   if (submission.email) {
     await sendEmail({
@@ -115,7 +118,10 @@ We'll be in touch separately about setting up a livestream if you're planning to
 export async function rejectSubmission(formData: FormData) {
   const id = formData.get('id') as string;
   const supabase = createClient();
-  await supabase.from('submissions').update({ status: 'rejected' }).eq('id', id);
+  await supabase
+    .from('submissions')
+    .update({ status: 'rejected', updated_at: new Date().toISOString() })
+    .eq('id', id);
   revalidatePath('/admin/submissions');
 }
 
@@ -157,7 +163,10 @@ export async function approveEventSubmission(formData: FormData) {
     throw new Error(`Failed to approve submission: ${eventError.message}`);
   }
 
-  await supabase.from('event_submissions').update({ status: 'approved' }).eq('id', id);
+  await supabase
+    .from('event_submissions')
+    .update({ status: 'approved', updated_at: new Date().toISOString() })
+    .eq('id', id);
 
   if (submission.email) {
     await sendEmail({
@@ -178,7 +187,10 @@ Good news — ${submission.event_name} has been approved and is now listed on LO
 export async function rejectEventSubmission(formData: FormData) {
   const id = formData.get('id') as string;
   const supabase = createClient();
-  await supabase.from('event_submissions').update({ status: 'rejected' }).eq('id', id);
+  await supabase
+    .from('event_submissions')
+    .update({ status: 'rejected', updated_at: new Date().toISOString() })
+    .eq('id', id);
   revalidatePath('/admin/submissions');
 }
 
@@ -215,7 +227,10 @@ export async function approveMinistrySubmission(formData: FormData) {
   }
 
   await matchEditorCandidate(supabase, submission.email, { type: 'ministry', id: newMinistry.id });
-  await supabase.from('ministry_submissions').update({ status: 'approved' }).eq('id', id);
+  await supabase
+    .from('ministry_submissions')
+    .update({ status: 'approved', updated_at: new Date().toISOString() })
+    .eq('id', id);
 
   if (submission.email) {
     await sendEmail({
@@ -240,7 +255,10 @@ Want to manage this page yourself? Create an account using this same email addre
 export async function rejectMinistrySubmission(formData: FormData) {
   const id = formData.get('id') as string;
   const supabase = createClient();
-  await supabase.from('ministry_submissions').update({ status: 'rejected' }).eq('id', id);
+  await supabase
+    .from('ministry_submissions')
+    .update({ status: 'rejected', updated_at: new Date().toISOString() })
+    .eq('id', id);
   revalidatePath('/admin/submissions');
 }
 

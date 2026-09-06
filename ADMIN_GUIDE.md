@@ -54,9 +54,11 @@ a livestream team, a youth group, and so on. Same pattern as churches:
   blocked (with a clear message and an Unlink Editor button, same as
   churches) if the ministry still has events, videos, or a linked editor
   account attached.
-- A ministry does **not** have its own livestreams — it can post videos
-  and organize events, but an actual live broadcast is still tied to a
-  church or set up directly by an admin.
+- **Livestreams**: a ministry can have livestreams linked to it, same as
+  a church — set this under Admin → Livestreams (choose "Ministry" as the
+  Type and pick it from the dropdown). This is admin-only, same as
+  everywhere else — ministry editors never get access to livestream
+  settings via `/manage`.
 
 ### Managing Events
 
@@ -216,6 +218,13 @@ since your review of the submission itself is the approval step. Church
 and ministry approvals may also flag a matching-email account for editor
 activation (see below). **Reject** marks it rejected; it stays in the
 list for your records but creates nothing.
+
+**Retention**: approved and rejected submissions are automatically
+deleted 60 days after you review them (not 60 days from when they were
+originally submitted). Pending ones are never auto-deleted — they stay
+until you act on them. Each category shows new/pending submissions
+directly; older reviewed ones sit behind a "Show N reviewed submissions"
+toggle so a long history doesn't clutter the page.
 
 ### Managing Admin Access
 

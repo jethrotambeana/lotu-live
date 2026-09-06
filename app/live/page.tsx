@@ -46,6 +46,7 @@ export default async function LiveDirectoryPage({
             label: 'Any Type',
             options: [
               { value: 'church', label: 'Church' },
+              { value: 'ministry', label: 'Ministry' },
               { value: 'event', label: 'Event' },
               { value: 'organisation', label: 'Organisation' },
             ],

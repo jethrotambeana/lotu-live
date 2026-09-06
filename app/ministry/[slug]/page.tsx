@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabaseServer';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import LiveCard from '@/components/LiveCard';
 import EventCard from '@/components/EventCard';
 import VideoCard from '@/components/VideoCard';
 import ShareButton from '@/components/ShareButton';
@@ -27,7 +28,13 @@ export default async function MinistryPage({ params }: { params: { slug: string 
     .single();
   if (!ministry) return notFound();
 
-  const [{ data: events }, { data: videos }] = await Promise.all([
+  const [{ data: liveNow }, { data: events }, { data: videos }] = await Promise.all([
+    supabase
+      .from('livestreams')
+      .select('slug, name, location, status, preview_image')
+      .eq('ministry_id', ministry.id)
+      .eq('visible', true)
+      .eq('status', 'live'),
     supabase
       .from('events')
       .select('slug, name, venue, town, start_date, end_date, status, poster_url')
@@ -91,6 +98,24 @@ export default async function MinistryPage({ params }: { params: { slug: string 
       )}
 
       {ministry.description && <p className="mt-6 text-slate-700">{ministry.description}</p>}
+
+      {liveNow && liveNow.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 font-semibold">Current Livestream</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {liveNow.map((s) => (
+              <LiveCard
+                key={s.slug}
+                slug={s.slug}
+                name={s.name}
+                location={s.location}
+                status={s.status as any}
+                previewImage={s.preview_image}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {events && events.length > 0 && (
         <section className="mt-8">

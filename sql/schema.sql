@@ -106,8 +106,10 @@ create table livestreams (
   id uuid primary key default gen_random_uuid(),
   slug text unique not null,
   name text not null,
-  type text check (type in ('church','event','organisation')),
+  type text check (type in ('church','ministry','event','organisation')),
   church_id uuid references churches(id),
+  ministry_id uuid references ministries(id), -- admin-managed, same as
+                                        -- churches; no editor access change
   event_id uuid references events(id),
   organisation_id uuid references organisations(id),
   provider text not null check (provider in ('cloudflare','youtube','facebook','hls')),
@@ -182,6 +184,8 @@ create table submissions (
   streaming_platform text,
   livestream_ref text,          -- provider ID or URL as submitted, unvalidated
   status text default 'pending' check (status in ('pending','approved','rejected')),
+  updated_at timestamptz default now(), -- stamped on Approve/Reject; drives
+                                        -- the 60-day cleanup scheduled job
   created_at timestamptz default now()
 );
 
@@ -208,6 +212,7 @@ create table event_submissions (
   youtube text,
   poster_url text,
   status text default 'pending' check (status in ('pending','approved','rejected')),
+  updated_at timestamptz default now(),
   created_at timestamptz default now()
 );
 
@@ -230,6 +235,7 @@ create table ministry_submissions (
   facebook text,
   youtube text,
   status text default 'pending' check (status in ('pending','approved','rejected')),
+  updated_at timestamptz default now(),
   created_at timestamptz default now()
 );
 

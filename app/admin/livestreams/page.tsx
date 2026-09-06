@@ -7,7 +7,7 @@ export default async function AdminLivestreamsPage() {
   const supabase = createClient();
   const { data: streams } = await supabase
     .from('livestreams')
-    .select('id, name, provider, status, visible, countries(name)')
+    .select('id, name, provider, status, visible, countries(name), churches(name), ministries(name)')
     .order('name');
 
   return (
@@ -32,6 +32,8 @@ export default async function AdminLivestreamsPage() {
               <span className="font-medium">{s.name}</span>
               <p className="text-sm text-slate-500">
                 {s.provider} · {s.countries?.name}
+                {s.churches?.name ? ` · ${s.churches.name}` : ''}
+                {s.ministries?.name ? ` · ${s.ministries.name}` : ''}
               </p>
             </div>
             <div className="flex items-center gap-3">

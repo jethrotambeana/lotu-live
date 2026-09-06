@@ -52,6 +52,7 @@ export async function saveLivestream(formData: FormData) {
     slug: (formData.get('slug') as string) || slugify(formData.get('name') as string),
     type: (formData.get('type') as string) || null,
     church_id: (formData.get('church_id') as string) || null,
+    ministry_id: (formData.get('ministry_id') as string) || null,
     event_id: (formData.get('event_id') as string) || null,
     provider,
     provider_stream_id: providerStreamId,

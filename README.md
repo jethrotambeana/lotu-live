@@ -61,11 +61,13 @@ site.
     belong to one church, or stand alone (e.g. a regional youth ministry).
   - **Events** — list, add, edit, delete. Can be hosted by a church, a
     ministry, or neither (free-text organizer name via `hosted_by`).
-  - **Livestreams** — list, add, edit, delete, show/hide toggle. Provider
-    field is a dropdown (Cloudflare / YouTube / Facebook / HLS) with a
-    single ID/URL field — never raw embed HTML, for security. Preview
-    Image auto-fills for YouTube and Cloudflare Stream when left blank;
-    Facebook and HLS require pasting a URL manually.
+  - **Livestreams** — list, add, edit, delete, show/hide toggle. Can be
+    linked to a Church or a Ministry (admin-only either way — no editor
+    access to livestreams regardless of which). Provider field is a
+    dropdown (Cloudflare / YouTube / Facebook / HLS) with a single ID/URL
+    field — never raw embed HTML, for security. Preview Image auto-fills
+    for YouTube and Cloudflare Stream when left blank; Facebook and HLS
+    require pasting a URL manually.
   - **Videos** — list, add, edit, delete. Provider field is a dropdown
     (Cloudflare / YouTube / Cloudinary) with a single ID/URL field, same
     security approach as Livestreams. Thumbnail auto-fills for YouTube and
@@ -120,6 +122,15 @@ site.
   statuses unless the stream actually goes live, so scheduling ahead of
   time still works normally. YouTube, Facebook, and HLS streams remain
   fully manual — an admin still sets their status by hand.
+- **Submissions cleanup**: a second Netlify Scheduled Function
+  (`netlify/functions/cleanup-submissions.ts`) runs daily and deletes
+  approved/rejected submissions (across all three submission tables) once
+  they're more than 60 days past their review date. Pending submissions
+  are never touched. The Submissions page also keeps new (pending)
+  submissions directly visible per category, with older
+  approved/rejected ones tucked behind a "Show N reviewed submissions"
+  expand/collapse (native `<details>`, no client JS needed) so a long
+  history doesn't push everything else down the page.
 - Database schema with Row Level Security on every table (`sql/schema.sql`).
 
 ### 🚧 Not Yet Built
@@ -134,10 +145,6 @@ site.
   what's listed above (e.g. combining country + category together where
   relevant).
 - Notifications, favorites, managed/native streaming.
-- Ministries don't have their own livestreams (no `ministry_id` on
-  `livestreams`) — a "livestream ministry" can post videos and organize
-  events, but an actual live broadcast stays tied to a church or is
-  admin-managed directly.
 
 ## 4. Project Structure
 

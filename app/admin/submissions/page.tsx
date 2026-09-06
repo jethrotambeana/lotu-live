@@ -32,10 +32,21 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// Pending submissions always show directly; approved/rejected ones are
+// tucked behind a native <details> disclosure per category so a category
+// with a long history doesn't push everything else down the page. No
+// client JS needed — <details> handles the toggle natively.
+function splitByStatus<T extends { status: string }>(rows: T[]) {
+  return {
+    pending: rows.filter((r) => r.status === 'pending'),
+    reviewed: rows.filter((r) => r.status !== 'pending'),
+  };
+}
+
 export default async function AdminSubmissionsPage() {
   const supabase = createClient();
 
-  const [{ data: submissions }, { data: eventSubmissions }, { data: ministrySubmissions }, { data: pendingEditors }] =
+  const [{ data: submissionsRaw }, { data: eventSubmissionsRaw }, { data: ministrySubmissionsRaw }, { data: pendingEditors }] =
     await Promise.all([
       supabase.from('submissions').select('*, countries(name)').order('created_at', { ascending: false }),
       supabase
@@ -52,11 +63,15 @@ export default async function AdminSubmissionsPage() {
         .eq('role', 'pending_editor'),
     ]);
 
+  const { pending: pendingChurch, reviewed: reviewedChurch } = splitByStatus(submissionsRaw ?? []);
+  const { pending: pendingEvent, reviewed: reviewedEvent } = splitByStatus(eventSubmissionsRaw ?? []);
+  const { pending: pendingMinistry, reviewed: reviewedMinistry } = splitByStatus(ministrySubmissionsRaw ?? []);
+
   // For approved church/ministry submissions, look up whether a matching
   // account ended up linked, purely for admin visibility.
   const emails = [
-    ...(submissions ?? []).map((s: any) => s.email),
-    ...(ministrySubmissions ?? []).map((s: any) => s.email),
+    ...(submissionsRaw ?? []).map((s: any) => s.email),
+    ...(ministrySubmissionsRaw ?? []).map((s: any) => s.email),
   ].filter(Boolean);
   const { data: linkedProfiles } =
     emails.length > 0
@@ -75,6 +90,9 @@ export default async function AdminSubmissionsPage() {
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold">Submissions</h1>
+      <p className="mb-6 text-xs text-slate-400">
+        Approved/rejected submissions are automatically removed 60 days after review.
+      </p>
 
       {pendingEditors && pendingEditors.length > 0 && (
         <section className="mb-8">
@@ -102,133 +120,201 @@ export default async function AdminSubmissionsPage() {
         </section>
       )}
 
+      {/* Church Submissions */}
       <section className="mb-8">
         <h2 className="mb-3 text-lg font-semibold">Church Submissions</h2>
-        {submissions && submissions.length > 0 ? (
-          <div className="space-y-4">
-            {submissions.map((s: any) => (
-              <div key={s.id} className="rounded border border-slate-200 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">{s.church_name}</p>
-                  <StatusBadge status={s.status} />
-                </div>
-                <p className="text-sm text-slate-500">
-                  {s.countries?.name} {s.island_province ? `— ${s.island_province}` : ''}{' '}
-                  {s.location ? `— ${s.location}` : ''}
-                </p>
-                <p className="text-sm text-slate-500">
-                  Contact: {s.contact_name} · {s.email} · {s.phone}
-                </p>
-                {s.status === 'approved' && (
-                  <p className="mt-1 text-xs text-slate-400">
-                    Editor access: {editorStatus(s.email)}
-                    {editorStatus(s.email) === 'no account yet' &&
-                      ' — link manually via SQL if this church needs a self-service editor (see Admin Guide).'}
-                  </p>
-                )}
-                {s.status === 'pending' && (
-                  <div className="mt-3 flex gap-2">
-                    <form action={approveSubmission}>
-                      <input type="hidden" name="id" value={s.id} />
-                      <button className="rounded bg-green-600 px-3 py-1 text-sm text-white">Approve</button>
-                    </form>
-                    <form action={rejectSubmission}>
-                      <input type="hidden" name="id" value={s.id} />
-                      <button className="rounded border border-slate-300 px-3 py-1 text-sm">Reject</button>
-                    </form>
-                  </div>
-                )}
+        <div className="space-y-4">
+          {pendingChurch.map((s: any) => (
+            <div key={s.id} className="rounded border border-slate-200 p-4">
+              <div className="flex items-center justify-between">
+                <p className="font-medium">{s.church_name}</p>
+                <StatusBadge status={s.status} />
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-slate-500">No church submissions yet.</p>
-        )}
+              <p className="text-sm text-slate-500">
+                {s.countries?.name} {s.island_province ? `— ${s.island_province}` : ''}{' '}
+                {s.location ? `— ${s.location}` : ''}
+              </p>
+              <p className="text-sm text-slate-500">
+                Contact: {s.contact_name} · {s.email} · {s.phone}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <form action={approveSubmission}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <button className="rounded bg-green-600 px-3 py-1 text-sm text-white">Approve</button>
+                </form>
+                <form action={rejectSubmission}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <button className="rounded border border-slate-300 px-3 py-1 text-sm">Reject</button>
+                </form>
+              </div>
+            </div>
+          ))}
+          {pendingChurch.length === 0 && reviewedChurch.length === 0 && (
+            <p className="text-slate-500">No church submissions yet.</p>
+          )}
+          {reviewedChurch.length > 0 && (
+            <details className="rounded border border-slate-200">
+              <summary className="cursor-pointer p-3 text-sm font-medium text-slate-600">
+                Show {reviewedChurch.length} reviewed submission{reviewedChurch.length === 1 ? '' : 's'}
+              </summary>
+              <div className="space-y-4 p-4 pt-0">
+                {reviewedChurch.map((s: any) => (
+                  <div key={s.id} className="rounded border border-slate-200 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">{s.church_name}</p>
+                      <StatusBadge status={s.status} />
+                    </div>
+                    <p className="text-sm text-slate-500">
+                      {s.countries?.name} {s.island_province ? `— ${s.island_province}` : ''}{' '}
+                      {s.location ? `— ${s.location}` : ''}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      Contact: {s.contact_name} · {s.email} · {s.phone}
+                    </p>
+                    {s.status === 'approved' && (
+                      <p className="mt-1 text-xs text-slate-400">
+                        Editor access: {editorStatus(s.email)}
+                        {editorStatus(s.email) === 'no account yet' &&
+                          ' — link manually via SQL if this church needs a self-service editor (see Admin Guide).'}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
       </section>
 
+      {/* Event Submissions */}
       <section className="mb-8">
         <h2 className="mb-3 text-lg font-semibold">Event Submissions</h2>
-        {eventSubmissions && eventSubmissions.length > 0 ? (
-          <div className="space-y-4">
-            {eventSubmissions.map((s: any) => (
-              <div key={s.id} className="rounded border border-slate-200 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">{s.event_name}</p>
-                  <StatusBadge status={s.status} />
-                </div>
-                <p className="text-sm text-slate-500">
-                  {s.venue}, {s.town} — {s.start_date}
-                  {s.end_date ? ` to ${s.end_date}` : ''}
-                </p>
-                <p className="text-sm text-slate-500">
-                  Hosted by:{' '}
-                  {s.churches?.name || s.ministries?.name || s.hosted_by || 'Independent organizer'}
-                </p>
-                <p className="text-sm text-slate-500">
-                  Contact: {s.contact_name} · {s.email} · {s.phone}
-                </p>
-                {s.status === 'pending' && (
-                  <div className="mt-3 flex gap-2">
-                    <form action={approveEventSubmission}>
-                      <input type="hidden" name="id" value={s.id} />
-                      <button className="rounded bg-green-600 px-3 py-1 text-sm text-white">Approve</button>
-                    </form>
-                    <form action={rejectEventSubmission}>
-                      <input type="hidden" name="id" value={s.id} />
-                      <button className="rounded border border-slate-300 px-3 py-1 text-sm">Reject</button>
-                    </form>
-                  </div>
-                )}
+        <div className="space-y-4">
+          {pendingEvent.map((s: any) => (
+            <div key={s.id} className="rounded border border-slate-200 p-4">
+              <div className="flex items-center justify-between">
+                <p className="font-medium">{s.event_name}</p>
+                <StatusBadge status={s.status} />
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-slate-500">No event submissions yet.</p>
-        )}
+              <p className="text-sm text-slate-500">
+                {s.venue}, {s.town} — {s.start_date}
+                {s.end_date ? ` to ${s.end_date}` : ''}
+              </p>
+              <p className="text-sm text-slate-500">
+                Hosted by: {s.churches?.name || s.ministries?.name || s.hosted_by || 'Independent organizer'}
+              </p>
+              <p className="text-sm text-slate-500">
+                Contact: {s.contact_name} · {s.email} · {s.phone}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <form action={approveEventSubmission}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <button className="rounded bg-green-600 px-3 py-1 text-sm text-white">Approve</button>
+                </form>
+                <form action={rejectEventSubmission}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <button className="rounded border border-slate-300 px-3 py-1 text-sm">Reject</button>
+                </form>
+              </div>
+            </div>
+          ))}
+          {pendingEvent.length === 0 && reviewedEvent.length === 0 && (
+            <p className="text-slate-500">No event submissions yet.</p>
+          )}
+          {reviewedEvent.length > 0 && (
+            <details className="rounded border border-slate-200">
+              <summary className="cursor-pointer p-3 text-sm font-medium text-slate-600">
+                Show {reviewedEvent.length} reviewed submission{reviewedEvent.length === 1 ? '' : 's'}
+              </summary>
+              <div className="space-y-4 p-4 pt-0">
+                {reviewedEvent.map((s: any) => (
+                  <div key={s.id} className="rounded border border-slate-200 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">{s.event_name}</p>
+                      <StatusBadge status={s.status} />
+                    </div>
+                    <p className="text-sm text-slate-500">
+                      {s.venue}, {s.town} — {s.start_date}
+                      {s.end_date ? ` to ${s.end_date}` : ''}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      Hosted by: {s.churches?.name || s.ministries?.name || s.hosted_by || 'Independent organizer'}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      Contact: {s.contact_name} · {s.email} · {s.phone}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
       </section>
 
+      {/* Ministry Submissions */}
       <section>
         <h2 className="mb-3 text-lg font-semibold">Ministry Submissions</h2>
-        {ministrySubmissions && ministrySubmissions.length > 0 ? (
-          <div className="space-y-4">
-            {ministrySubmissions.map((s: any) => (
-              <div key={s.id} className="rounded border border-slate-200 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">{s.ministry_name}</p>
-                  <StatusBadge status={s.status} />
-                </div>
-                <p className="text-sm text-slate-500">
-                  {MINISTRY_TYPE_LABELS[s.type] || s.type}
-                  {s.churches?.name ? ` · Part of ${s.churches.name}` : ' · Independent'}
-                </p>
-                <p className="text-sm text-slate-500">
-                  Contact: {s.contact_name} · {s.email} · {s.phone}
-                </p>
-                {s.status === 'approved' && (
-                  <p className="mt-1 text-xs text-slate-400">
-                    Editor access: {editorStatus(s.email)}
-                    {editorStatus(s.email) === 'no account yet' &&
-                      ' — link manually via SQL if this ministry needs a self-service editor (see Admin Guide).'}
-                  </p>
-                )}
-                {s.status === 'pending' && (
-                  <div className="mt-3 flex gap-2">
-                    <form action={approveMinistrySubmission}>
-                      <input type="hidden" name="id" value={s.id} />
-                      <button className="rounded bg-green-600 px-3 py-1 text-sm text-white">Approve</button>
-                    </form>
-                    <form action={rejectMinistrySubmission}>
-                      <input type="hidden" name="id" value={s.id} />
-                      <button className="rounded border border-slate-300 px-3 py-1 text-sm">Reject</button>
-                    </form>
-                  </div>
-                )}
+        <div className="space-y-4">
+          {pendingMinistry.map((s: any) => (
+            <div key={s.id} className="rounded border border-slate-200 p-4">
+              <div className="flex items-center justify-between">
+                <p className="font-medium">{s.ministry_name}</p>
+                <StatusBadge status={s.status} />
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-slate-500">No ministry submissions yet.</p>
-        )}
+              <p className="text-sm text-slate-500">
+                {MINISTRY_TYPE_LABELS[s.type] || s.type}
+                {s.churches?.name ? ` · Part of ${s.churches.name}` : ' · Independent'}
+              </p>
+              <p className="text-sm text-slate-500">
+                Contact: {s.contact_name} · {s.email} · {s.phone}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <form action={approveMinistrySubmission}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <button className="rounded bg-green-600 px-3 py-1 text-sm text-white">Approve</button>
+                </form>
+                <form action={rejectMinistrySubmission}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <button className="rounded border border-slate-300 px-3 py-1 text-sm">Reject</button>
+                </form>
+              </div>
+            </div>
+          ))}
+          {pendingMinistry.length === 0 && reviewedMinistry.length === 0 && (
+            <p className="text-slate-500">No ministry submissions yet.</p>
+          )}
+          {reviewedMinistry.length > 0 && (
+            <details className="rounded border border-slate-200">
+              <summary className="cursor-pointer p-3 text-sm font-medium text-slate-600">
+                Show {reviewedMinistry.length} reviewed submission{reviewedMinistry.length === 1 ? '' : 's'}
+              </summary>
+              <div className="space-y-4 p-4 pt-0">
+                {reviewedMinistry.map((s: any) => (
+                  <div key={s.id} className="rounded border border-slate-200 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">{s.ministry_name}</p>
+                      <StatusBadge status={s.status} />
+                    </div>
+                    <p className="text-sm text-slate-500">
+                      {MINISTRY_TYPE_LABELS[s.type] || s.type}
+                      {s.churches?.name ? ` · Part of ${s.churches.name}` : ' · Independent'}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      Contact: {s.contact_name} · {s.email} · {s.phone}
+                    </p>
+                    {s.status === 'approved' && (
+                      <p className="mt-1 text-xs text-slate-400">
+                        Editor access: {editorStatus(s.email)}
+                        {editorStatus(s.email) === 'no account yet' &&
+                          ' — link manually via SQL if this ministry needs a self-service editor (see Admin Guide).'}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
       </section>
     </div>
   );
