@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabaseServer';
-import { saveMinistry } from '../actions';
+import { saveMinistry, unlinkMinistryEditorFromEdit, grantMinistryEditor } from '../actions';
 
 const MINISTRY_TYPES = [
   { value: 'music_singing', label: 'Music / Singing' },
@@ -12,7 +12,11 @@ const MINISTRY_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-export default async function MinistryFormPage({ searchParams }: { searchParams: { id?: string } }) {
+export default async function MinistryFormPage({
+  searchParams,
+}: {
+  searchParams: { id?: string; error?: string };
+}) {
   const supabase = createClient();
   const [{ data: countries }, { data: churches }] = await Promise.all([
     supabase.from('countries').select('id, name').order('name'),
@@ -20,14 +24,28 @@ export default async function MinistryFormPage({ searchParams }: { searchParams:
   ]);
 
   let ministry: any = null;
+  let currentEditor: any = null;
   if (searchParams.id) {
     const { data } = await supabase.from('ministries').select('*').eq('id', searchParams.id).single();
     ministry = data;
+    const { data: editor } = await supabase
+      .from('profiles')
+      .select('id, email, role')
+      .eq('ministry_id', searchParams.id)
+      .maybeSingle();
+    currentEditor = editor;
   }
 
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold">{ministry ? 'Edit Ministry' : 'Add Ministry'}</h1>
+
+      {searchParams.error && (
+        <div className="mb-4 max-w-xl rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {searchParams.error}
+        </div>
+      )}
+
       <form action={saveMinistry} className="max-w-xl space-y-4">
         {ministry && <input type="hidden" name="id" value={ministry.id} />}
 
@@ -110,6 +128,51 @@ export default async function MinistryFormPage({ searchParams }: { searchParams:
           {ministry ? 'Save Changes' : 'Create Ministry'}
         </button>
       </form>
+
+      {ministry && (
+        <div className="mt-8 max-w-xl rounded border border-slate-200 p-4">
+          <h2 className="mb-3 font-semibold">Editor Access</h2>
+          {currentEditor ? (
+            <div>
+              <p className="text-sm text-slate-600">
+                <span className="font-medium">{currentEditor.email}</span>{' '}
+                {currentEditor.role === 'editor' ? (
+                  <span className="text-green-600">(Active)</span>
+                ) : (
+                  <span className="text-amber-600">(Pending Activation — see Admin → Submissions)</span>
+                )}
+              </p>
+              <form action={unlinkMinistryEditorFromEdit} className="mt-2">
+                <input type="hidden" name="profileId" value={currentEditor.id} />
+                <input type="hidden" name="ministryId" value={ministry.id} />
+                <button className="rounded border border-red-300 bg-white px-3 py-1 text-sm text-red-700 hover:bg-red-50">
+                  Unlink Editor
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div>
+              <p className="mb-2 text-sm text-slate-500">
+                No editor currently linked. Grant access to someone who already has an account
+                (they must sign up at /signup first).
+              </p>
+              <form action={grantMinistryEditor} className="flex gap-2">
+                <input type="hidden" name="ministryId" value={ministry.id} />
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="editor@example.com"
+                  required
+                  className="flex-1 rounded border border-slate-300 p-2 text-sm"
+                />
+                <button className="rounded bg-sky-600 px-4 py-2 text-sm text-white whitespace-nowrap">
+                  Grant Access
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

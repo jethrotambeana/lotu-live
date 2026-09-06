@@ -316,21 +316,40 @@ and the editor activation are separate, explicit clicks you make. This is
 deliberate: matching by email is a convenience for finding the right
 account, not a substitute for you confirming it's the right person.
 
-**If auto-matching didn't happen** (e.g. they used a different email),
-link them manually — find their UUID under Authentication → Users, find
-the church/ministry's UUID under its Edit page (visible in the URL), then
-in Supabase SQL Editor:
+**Handling staff turnover (new contact person, old one leaves, etc.)**:
+every church and ministry's own Edit page has an **Editor Access** panel
+at the bottom — this is the normal way to handle a handover, no SQL
+needed:
+
+- If someone's currently linked, it shows their email and status
+  (Active / Pending Activation) with an **Unlink Editor** button.
+- If no one's linked, it shows an email field and a **Grant Access**
+  button — type the new person's email (they must have already signed up
+  at `/signup`) and click once. This grants access immediately (skipping
+  the pending step, since you typing the email in and clicking the button
+  *is* the deliberate confirmation) and sends them the same activation
+  email as the normal flow.
+
+To hand over from one person to another: click **Unlink Editor** on the
+outgoing person, then use **Grant Access** to add the incoming person's
+email — both from the same panel, no need to leave the page or touch
+Supabase directly.
+
+**If you'd still rather do it via SQL** (e.g. bulk changes, scripting),
+find their UUID under Authentication → Users, find the church/ministry's
+UUID under its Edit page (visible in the URL), then in Supabase SQL
+Editor:
 ```sql
 -- For a church editor:
 update profiles set role = 'editor', church_id = 'CHURCH-UUID-HERE' where id = 'THEIR-UUID-HERE';
 -- For a ministry editor:
 update profiles set role = 'editor', ministry_id = 'MINISTRY-UUID-HERE' where id = 'THEIR-UUID-HERE';
 ```
-(This skips the pending step and grants access immediately — appropriate
-when you're manually confirming it yourself anyway. A profile can never
-have both `church_id` and `ministry_id` set — the database enforces this.)
+A profile can never have both `church_id` and `ministry_id` set — the
+database enforces this regardless of which method you use.
 
-**To remove editor access** without deleting their account:
+**To remove editor access** without deleting their account, either click
+**Unlink Editor** on the Edit page, or via SQL:
 ```sql
 update profiles set role = 'viewer', church_id = null, ministry_id = null where id = 'THEIR-UUID-HERE';
 ```
