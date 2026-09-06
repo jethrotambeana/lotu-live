@@ -201,6 +201,15 @@ to maintain here beyond keeping the underlying fields (Island/Province,
 Language, Category, Status, Country) filled in accurately, since a blank
 field on a record just means that record won't surface under that filter.
 
+### Managing the About Page
+
+**Admin → About Page** — a single settings form (there's only ever one
+About page, so unlike everything else this isn't a list). Controls what
+shows on the public `/about` page: a Tagline (the subtitle under "About
+LOTU.LIVE"), an optional Image, and the Body Content. Separate paragraphs
+in Body Content with a blank line — each one becomes its own paragraph on
+the page. Changes go live immediately.
+
 ### Reading Contact Messages
 
 **Admin → Messages** — shows everything submitted via the public

@@ -11,6 +11,7 @@ const ADMIN_NAV = [
   { href: '/admin/videos', label: 'Videos' },
   { href: '/admin/messages', label: 'Messages' },
   { href: '/admin/submissions', label: 'Submissions' },
+  { href: '/admin/about', label: 'About Page' },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

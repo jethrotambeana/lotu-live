@@ -4,7 +4,7 @@ import Image from 'next/image';
 import MobileNav from '@/components/MobileNav';
 
 export const metadata = {
-  title: 'LOTU.LIVE — The Pacific Adventist Media Network',
+  title: 'LOTU.LIVE — The Pacific Gospel Media Network',
   description:
     'Watch live worship, evangelism, youth programs and Christian media from Seventh-day Adventist churches across Vanuatu, Solomon Islands, Papua New Guinea and Fiji.',
 };
@@ -51,7 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </header>
         <main>{children}</main>
         <footer className="mt-12 border-t border-slate-200 py-8 text-center text-sm text-slate-500">
-          <p>LOTU.LIVE — The Pacific Adventist Media Network</p>
+          <p>LOTU.LIVE — The Pacific Gospel Media Network</p>
           <p className="mt-1">Vanuatu · Solomon Islands · Papua New Guinea · Fiji</p>
         </footer>
       </body>

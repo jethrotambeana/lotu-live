@@ -178,8 +178,8 @@ create table submissions (
   country_id uuid references countries(id),
   island_province text,
   location text,
-  contact_name text,
-  email text,
+  contact_name text not null,
+  email text not null,
   phone text,
   website text,
   facebook text,
@@ -207,8 +207,8 @@ create table event_submissions (
   start_time time,
   end_time time,
   description text,
-  contact_name text,
-  email text,
+  contact_name text not null,
+  email text not null,
   phone text,
   website text,
   facebook text,
@@ -231,8 +231,8 @@ create table ministry_submissions (
   island_province text,
   town text,
   description text,
-  contact_name text,
-  email text,
+  contact_name text not null,
+  email text not null,
   phone text,
   website text,
   facebook text,
@@ -272,6 +272,15 @@ create table profiles (
 );
 create index on profiles (church_id);
 create index on profiles (ministry_id);
+-- Enforces "at most one editor/pending editor per church, and per
+-- ministry" at the database level, not just via the admin UI hiding the
+-- Grant Access form once one exists.
+create unique index profiles_unique_church_editor
+  on profiles (church_id)
+  where role in ('editor', 'pending_editor') and church_id is not null;
+create unique index profiles_unique_ministry_editor
+  on profiles (ministry_id)
+  where role in ('editor', 'pending_editor') and ministry_id is not null;
 alter table profiles add constraint profiles_single_scope_check
   check (church_id is null or ministry_id is null);
 
@@ -365,12 +374,22 @@ alter table submissions enable row level security;
 alter table event_submissions enable row level security;
 alter table ministry_submissions enable row level security;
 alter table profiles enable row level security;
+-- Added in a later security audit — these had no RLS at all until then.
+-- contacts especially: with no RLS, anyone could read every contact form
+-- submission ever made, since the anon key is necessarily public.
+alter table contacts enable row level security;
+alter table countries enable row level security;
+alter table categories enable row level security;
+alter table video_categories enable row level security;
 
 create policy "public read churches" on churches for select using (true);
 create policy "public read approved ministries" on ministries for select using (approved = true);
 create policy "public read approved events" on events for select using (approved = true);
 create policy "public read visible livestreams" on livestreams for select using (visible = true);
 create policy "public read approved videos" on videos for select using (approved = true);
+create policy "public read countries" on countries for select using (true);
+create policy "public read categories" on categories for select using (true);
+create policy "public read video categories" on video_categories for select using (true);
 -- submissions/event_submissions/ministry_submissions: insert-only from the
 -- public; admins can read (see below), no read access for anyone else.
 create policy "public insert submissions" on submissions for insert with check (true);
@@ -383,6 +402,9 @@ create policy "admin manage event submissions" on event_submissions for update u
 create policy "public insert ministry submissions" on ministry_submissions for insert with check (true);
 create policy "admin read ministry submissions" on ministry_submissions for select using (public.is_admin());
 create policy "admin manage ministry submissions" on ministry_submissions for update using (public.is_admin());
+-- contacts: same insert-only-from-public pattern as submissions.
+create policy "public insert contacts" on contacts for insert with check (true);
+create policy "admin read contacts" on contacts for select using (public.is_admin());
 
 -- Admin write policies (requires profiles.role = 'admin')
 create policy "admin write churches" on churches for all using (
@@ -397,6 +419,24 @@ create policy "admin write livestreams" on livestreams for all using (
 );
 create policy "admin write videos" on videos for all using (
   exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+);
+create policy "admin write countries" on countries for all using (public.is_admin());
+create policy "admin write categories" on categories for all using (public.is_admin());
+create policy "admin write video categories" on video_categories for all using (public.is_admin());
+-- Editors write to video_categories directly from /manage using their own
+-- session (not the service role), so they need a policy scoped to videos
+-- they actually own — church-owned or ministry-owned.
+create policy "editor manage own video categories" on video_categories for all using (
+  exists (
+    select 1 from videos v
+    join profiles p on p.id = auth.uid()
+    where v.id = video_categories.video_id
+      and p.role = 'editor'
+      and (
+        (p.church_id is not null and p.church_id = v.church_id)
+        or (p.ministry_id is not null and p.ministry_id = v.ministry_id)
+      )
+  )
 );
 create policy "admin manage submissions" on submissions for update using (
   exists (select 1 from profiles where id = auth.uid() and role = 'admin')

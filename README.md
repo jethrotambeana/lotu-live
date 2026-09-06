@@ -1,6 +1,6 @@
 # LOTU.LIVE — Project README
 
-**The Pacific Adventist Media Network**
+**The Pacific Gospel Media Network**
 Live site: https://lotu.live (previously lotulive.netlify.app — see §8)
 Repository: https://github.com/jethrotambeana/lotu-live
 
@@ -76,6 +76,9 @@ site.
     Categories are assigned via checkboxes backed by the
     `video_categories` join table.
   - **Messages** — read-only list of `/contact` submissions.
+  - **About Page** — a singleton settings form (Tagline, optional Image,
+    Body Content) controlling the public `/about` page, stored in the
+    `site_settings` table (previously unused since the original schema).
   - **Submissions** — three review queues on one page: church submissions
     (from `/submit`), event submissions (from `/submit-event`), and
     ministry submissions (from `/submit-ministry`), each with
@@ -280,6 +283,20 @@ next.config.js                 Image domain allowlist (see §6)
   DEFINER` helper function (`is_admin()`) that checks admin status without
   querying `profiles` from inside a `profiles` policy, avoiding the same
   recursion without sacrificing admin access to the table.
+- **Security audit findings (2026-09-06)**: a systematic review found
+  `contacts` had **no RLS at all** — since the anon key is necessarily
+  public, this meant anyone could read every contact form submission ever
+  made. Also found `countries`, `categories`, and `video_categories` had
+  no RLS (open to anonymous tampering), no database-level limit on how
+  many editors could be linked to one church/ministry (only prevented by
+  the admin UI), and `contact_name`/`email` on all three submission
+  tables were only "required" client-side, not enforced server-side. All
+  fixed in `sql/2026-09-06_security_fixes_critical_high.sql` — see that
+  file's comments for the full reasoning per fix. A few Medium/Low
+  findings from the same audit (no CAPTCHA/rate-limiting on public forms,
+  three long-unused legacy tables with no RLS, weak password minimum,
+  scheduled functions reachable outside their schedule) were intentionally
+  left unfixed for now — see Next Steps.
 
 ## 7. Next Steps To Consider
 
@@ -288,6 +305,13 @@ next.config.js                 Image domain allowlist (see §6)
   name/public-ID convention gets established.
 - Revisit whether `/churches` and `/events` need additional filters (e.g.
   category) as more content is added.
+- Remaining security hardening from the 2026-09-06 audit (Medium/Low,
+  deliberately deferred): enable RLS on the unused `organisations`,
+  `stream_schedules`, and `site_settings` tables; add spam protection
+  (rate limiting/CAPTCHA/honeypot) to the four public forms; raise the
+  signup password minimum above 6 characters; verify Netlify's two
+  scheduled functions are actually invoked by the scheduler rather than
+  an arbitrary request to their URL.
 
 ## 8. Custom Domain (lotu.live)
 
