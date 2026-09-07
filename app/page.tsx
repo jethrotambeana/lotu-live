@@ -24,20 +24,34 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero — the banner already carries the wordmark, tagline, country
-          list, and feature callouts. Shown at its exact natural aspect
-          ratio (2046:768) so nothing is ever cropped, on any screen size —
-          it simply scales shorter on narrow phones rather than losing
-          content unpredictably. Buttons sit in their own bar below rather
-          than overlaid, since the banner gets too short on mobile to
+          list, and feature callouts. Two separate images now, not one
+          cropped by CSS: hero-banner-mobile.jpg (1448x1086, 4:3) below the
+          `sm` breakpoint — purpose-composed for a taller/narrower frame so
+          the tagline and icon row stay legible — and the original
+          hero-banner.jpg (2046:768) at `sm` and above, unchanged. Each is
+          shown at its own exact aspect ratio so neither is ever cropped;
+          only one <Image> is actually fetched per visit via the
+          hidden/block toggle. Buttons sit in their own bar below rather
+          than overlaid, since either banner gets too short/busy to
           reliably host legible overlay text.
-          NOTE: the "?v=2" on the src is a deliberate cache-buster — Next's
-          image optimizer caches transformed images by URL, not content,
-          and does not invalidate that cache on redeploy. If this file is
-          ever replaced again, bump this to "?v=3" (etc.) or the old image
-          may keep being served. */}
+          NOTE: "?v=2" cache-busts Next's image optimizer, which caches
+          transformed images by URL rather than content and does not
+          invalidate that cache on redeploy. If hero-banner.jpg is ever
+          replaced again, bump this to "?v=3" (etc.) or the old image may
+          keep being served. */}
       <section>
         <h1 className="sr-only">LOTU.LIVE — Worship Together. Wherever You Are.</h1>
-        <div className="relative aspect-[2046/768] w-full">
+        <div className="relative aspect-[1448/1086] w-full sm:hidden">
+          <Image
+            src="/hero-banner-mobile.jpg"
+            alt="LOTU.LIVE — Worship Together. Wherever You Are. Live streams, inspiring messages, and church services across Vanuatu, Solomon Islands, Papua New Guinea, Fiji and beyond."
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+          />
+        </div>
+        <div className="relative hidden aspect-[2046/768] w-full sm:block">
           <Image
             src="/hero-banner.jpg?v=2"
             alt="LOTU.LIVE — Worship Together. Wherever You Are. Live streams, inspiring messages, and church services across Vanuatu, Solomon Islands, Papua New Guinea, Fiji and beyond."
