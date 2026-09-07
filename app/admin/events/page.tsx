@@ -2,17 +2,32 @@ import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
 import { deleteEvent, toggleEventApproved } from './actions';
 import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
+import FilterBar from '@/components/FilterBar';
 
 export default async function AdminEventsPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; church?: string; ministry?: string };
 }) {
   const supabase = createClient();
-  const { data: events } = await supabase
+
+  const [{ data: churches }, { data: ministries }] = await Promise.all([
+    supabase.from('churches').select('id, name').order('name'),
+    supabase.from('ministries').select('id, name').order('name'),
+  ]);
+
+  let query = supabase
     .from('events')
-    .select('id, name, status, start_date, town, churches(name), approved')
+    .select('id, name, status, start_date, town, churches(name), ministries(name), approved');
+
+  if (searchParams.church) query = query.eq('host_church_id', searchParams.church);
+  if (searchParams.ministry) query = query.eq('host_ministry_id', searchParams.ministry);
+
+  const { data: events } = await query
+    .order('approved', { ascending: true }) // pending-approval rows (approved = false) surface first
     .order('start_date', { ascending: true });
+
+  const pendingCount = (events ?? []).filter((e: any) => !e.approved).length;
 
   return (
     <div>
@@ -27,6 +42,27 @@ export default async function AdminEventsPage({
           {searchParams.error}
         </div>
       )}
+      {pendingCount > 0 && (
+        <div className="mb-4 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          {pendingCount} event{pendingCount === 1 ? '' : 's'} awaiting approval — shown first in the list below.
+        </div>
+      )}
+
+      <FilterBar
+        filters={[
+          {
+            name: 'church',
+            label: 'All Churches',
+            options: (churches ?? []).map((c) => ({ value: c.id, label: c.name })),
+          },
+          {
+            name: 'ministry',
+            label: 'All Ministries',
+            options: (ministries ?? []).map((m) => ({ value: m.id, label: m.name })),
+          },
+        ]}
+      />
+
       <div className="space-y-2">
         {(events ?? []).map((e: any) => (
           <div key={e.id} className="flex items-center justify-between rounded border border-slate-200 p-3">
@@ -41,6 +77,7 @@ export default async function AdminEventsPage({
               <p className="text-sm text-slate-500">
                 {e.town} — {e.start_date}
                 {e.churches?.name ? ` · Hosted by ${e.churches.name}` : ''}
+                {e.ministries?.name ? ` · Hosted by ${e.ministries.name}` : ''}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -65,10 +102,13 @@ export default async function AdminEventsPage({
           </div>
         ))}
         {(!events || events.length === 0) && (
-          <p className="text-slate-500">No events yet — click "Add Event" to create one.</p>
+          <p className="text-slate-500">
+            {searchParams.church || searchParams.ministry
+              ? 'No events match these filters.'
+              : 'No events yet — click "Add Event" to create one.'}
+          </p>
         )}
       </div>
     </div>
   );
 }
-

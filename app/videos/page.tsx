@@ -6,14 +6,17 @@ import FilterBar from '@/components/FilterBar';
 export default async function VideosPage({
   searchParams,
 }: {
-  searchParams: { category?: string; language?: string };
+  searchParams: { category?: string; language?: string; church?: string; ministry?: string };
 }) {
   const supabase = createClient();
 
-  const [{ data: categories }, { data: languageRows }] = await Promise.all([
-    supabase.from('categories').select('id, name').order('name'),
-    supabase.from('videos').select('language').not('language', 'is', null),
-  ]);
+  const [{ data: categories }, { data: languageRows }, { data: churches }, { data: ministries }] =
+    await Promise.all([
+      supabase.from('categories').select('id, name').order('name'),
+      supabase.from('videos').select('language').not('language', 'is', null),
+      supabase.from('churches').select('id, name').order('name'),
+      supabase.from('ministries').select('id, name').order('name'),
+    ]);
 
   const languages = Array.from(
     new Set((languageRows ?? []).map((r: any) => r.language).filter(Boolean))
@@ -34,6 +37,12 @@ export default async function VideosPage({
   if (searchParams.language) {
     query = query.eq('language', searchParams.language);
   }
+  if (searchParams.church) {
+    query = query.eq('church_id', searchParams.church);
+  }
+  if (searchParams.ministry) {
+    query = query.eq('ministry_id', searchParams.ministry);
+  }
 
   const { data: videos } = await query.order('recorded_date', { ascending: false }).limit(24);
 
@@ -52,6 +61,16 @@ export default async function VideosPage({
             name: 'language',
             label: 'All Languages',
             options: languages.map((l) => ({ value: l, label: l })),
+          },
+          {
+            name: 'church',
+            label: 'All Churches',
+            options: (churches ?? []).map((c) => ({ value: c.id, label: c.name })),
+          },
+          {
+            name: 'ministry',
+            label: 'All Ministries',
+            options: (ministries ?? []).map((m) => ({ value: m.id, label: m.name })),
           },
         ]}
       />

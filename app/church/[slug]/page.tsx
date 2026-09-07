@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabaseServer';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import LiveCard from '@/components/LiveCard';
 import VideoCard from '@/components/VideoCard';
 import EventCard from '@/components/EventCard';
@@ -104,7 +105,12 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
 
       {events && events.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-3 font-semibold">Upcoming Events</h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-semibold">Upcoming Events</h2>
+            <Link href={`/events?church=${church.id}`} className="text-sm text-sky-600 underline">
+              View all →
+            </Link>
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             {events.map((e) => (
               <EventCard
@@ -125,7 +131,12 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
 
       {videos && videos.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-3 font-semibold">Recent Videos</h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-semibold">Recent Videos</h2>
+            <Link href={`/videos?church=${church.id}`} className="text-sm text-sky-600 underline">
+              View all →
+            </Link>
+          </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {videos.map((v) => (
               <VideoCard key={v.slug} slug={v.slug} title={v.title} thumbnail={v.thumbnail} speaker={v.speaker} />

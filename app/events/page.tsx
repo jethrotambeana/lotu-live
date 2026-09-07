@@ -5,11 +5,15 @@ import FilterBar from '@/components/FilterBar';
 export default async function EventsPage({
   searchParams,
 }: {
-  searchParams: { country?: string; status?: string };
+  searchParams: { country?: string; status?: string; church?: string; ministry?: string };
 }) {
   const supabase = createClient();
 
-  const { data: countries } = await supabase.from('countries').select('id, name').order('name');
+  const [{ data: countries }, { data: churches }, { data: ministries }] = await Promise.all([
+    supabase.from('countries').select('id, name').order('name'),
+    supabase.from('churches').select('id, name').order('name'),
+    supabase.from('ministries').select('id, name').order('name'),
+  ]);
 
   let query = supabase
     .from('events')
@@ -17,6 +21,8 @@ export default async function EventsPage({
 
   if (searchParams.country) query = query.eq('country_id', searchParams.country);
   if (searchParams.status) query = query.eq('status', searchParams.status);
+  if (searchParams.church) query = query.eq('host_church_id', searchParams.church);
+  if (searchParams.ministry) query = query.eq('host_ministry_id', searchParams.ministry);
 
   const { data: events } = await query.order('start_date', { ascending: true });
 
@@ -39,6 +45,16 @@ export default async function EventsPage({
               { value: 'current', label: 'Current' },
               { value: 'completed', label: 'Completed' },
             ],
+          },
+          {
+            name: 'church',
+            label: 'All Churches',
+            options: (churches ?? []).map((c) => ({ value: c.id, label: c.name })),
+          },
+          {
+            name: 'ministry',
+            label: 'All Ministries',
+            options: (ministries ?? []).map((m) => ({ value: m.id, label: m.name })),
           },
         ]}
       />
