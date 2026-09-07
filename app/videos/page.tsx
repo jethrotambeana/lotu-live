@@ -1,8 +1,7 @@
 import { createClient } from '@/lib/supabaseServer';
-import Link from 'next/link';
-import Image from 'next/image';
 import FilterBar from '@/components/FilterBar';
 import SeriesCard from '@/components/SeriesCard';
+import VideoCard from '@/components/VideoCard';
 import PageBanner from '@/components/PageBanner';
 
 export default async function VideosPage({
@@ -28,8 +27,8 @@ export default async function VideosPage({
   // category — an unconditional inner join would silently exclude any
   // video that has no categories assigned yet.
   const selectColumns = searchParams.category
-    ? 'slug, title, thumbnail, speaker, series_id, series(name, slug, cover_image), video_categories!inner(category_id)'
-    : 'slug, title, thumbnail, speaker, series_id, series(name, slug, cover_image)';
+    ? 'slug, title, thumbnail, speaker, provider, provider_video_id, series_id, series(name, slug, cover_image), video_categories!inner(category_id)'
+    : 'slug, title, thumbnail, speaker, provider, provider_video_id, series_id, series(name, slug, cover_image)';
 
   let query = supabase.from('videos').select(selectColumns);
 
@@ -53,7 +52,15 @@ export default async function VideosPage({
   // order (i.e. the order of that series' most recent episode) — a video
   // with no series_id displays individually exactly as before.
   type DisplayItem =
-    | { kind: 'video'; slug: string; title: string; thumbnail: string | null; speaker: string | null }
+    | {
+        kind: 'video';
+        slug: string;
+        title: string;
+        thumbnail: string | null;
+        speaker: string | null;
+        provider: string | null;
+        providerVideoId: string | null;
+      }
     | { kind: 'series'; seriesId: string; slug: string; name: string; coverImage: string | null; episodeCount: number };
 
   const items: DisplayItem[] = [];
@@ -72,7 +79,15 @@ export default async function VideosPage({
         episodeCount: 1, // placeholder, overwritten below with the true total
       });
     } else {
-      items.push({ kind: 'video', slug: v.slug, title: v.title, thumbnail: v.thumbnail, speaker: v.speaker });
+      items.push({
+        kind: 'video',
+        slug: v.slug,
+        title: v.title,
+        thumbnail: v.thumbnail,
+        speaker: v.speaker,
+        provider: v.provider,
+        providerVideoId: v.provider_video_id,
+      });
     }
   }
 
@@ -134,15 +149,15 @@ export default async function VideosPage({
                   episodeCount={item.episodeCount}
                 />
               ) : (
-                <Link key={item.slug} href={`/video/${item.slug}`} className="block">
-                  <div className="relative aspect-video overflow-hidden rounded bg-slate-100">
-                    {item.thumbnail && (
-                      <Image src={item.thumbnail} alt={item.title} fill className="object-cover" />
-                    )}
-                  </div>
-                  <p className="mt-2 text-sm font-medium">{item.title}</p>
-                  {item.speaker && <p className="text-xs text-slate-500">{item.speaker}</p>}
-                </Link>
+                <VideoCard
+                  key={item.slug}
+                  slug={item.slug}
+                  title={item.title}
+                  thumbnail={item.thumbnail}
+                  speaker={item.speaker}
+                  provider={item.provider as any}
+                  providerVideoId={item.providerVideoId}
+                />
               )
             )}
           </div>

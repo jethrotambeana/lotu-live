@@ -43,7 +43,7 @@ export default async function MinistryPage({ params }: { params: { slug: string 
       .order('start_date', { ascending: true }),
     supabase
       .from('videos')
-      .select('slug, title, thumbnail, speaker')
+      .select('slug, title, thumbnail, speaker, provider, provider_video_id')
       .eq('ministry_id', ministry.id)
       .order('recorded_date', { ascending: false })
       .limit(8),
@@ -153,7 +153,15 @@ export default async function MinistryPage({ params }: { params: { slug: string 
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {videos.map((v) => (
-              <VideoCard key={v.slug} slug={v.slug} title={v.title} thumbnail={v.thumbnail} speaker={v.speaker} />
+              <VideoCard
+                key={v.slug}
+                slug={v.slug}
+                title={v.title}
+                thumbnail={v.thumbnail}
+                speaker={v.speaker}
+                provider={v.provider as any}
+                providerVideoId={v.provider_video_id}
+              />
             ))}
           </div>
         </section>
