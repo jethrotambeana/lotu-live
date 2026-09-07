@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
 import Image from 'next/image';
-import { deleteMinistry, unlinkMinistryEditors } from './actions';
+import { deleteMinistry, unlinkMinistryEditors, toggleMinistryActive } from './actions';
 import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
 
 const MINISTRY_TYPE_LABELS: Record<string, string> = {
@@ -23,7 +23,7 @@ export default async function AdminMinistriesPage({
   const supabase = createClient();
   const { data: ministries } = await supabase
     .from('ministries')
-    .select('id, name, type, town, churches(name), logo_url')
+    .select('id, name, type, town, churches(name), logo_url, active')
     .order('name');
 
   return (
@@ -49,13 +49,25 @@ export default async function AdminMinistriesPage({
       )}
       <div className="space-y-2">
         {(ministries ?? []).map((m: any) => (
-          <div key={m.id} className="flex items-center justify-between rounded border border-slate-200 p-3">
+          <div
+            key={m.id}
+            className={`flex items-center justify-between rounded border border-slate-200 p-3 ${
+              m.active ? '' : 'opacity-60'
+            }`}
+          >
             <div className="flex items-center gap-3">
               <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-slate-100">
                 {m.logo_url && <Image src={m.logo_url} alt={m.name} fill className="object-cover" />}
               </div>
               <div>
-                <p className="font-medium">{m.name}</p>
+                <p className="font-medium">
+                  {m.name}
+                  {!m.active && (
+                    <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-700">
+                      Inactive
+                    </span>
+                  )}
+                </p>
                 <p className="text-sm text-slate-500">
                   {MINISTRY_TYPE_LABELS[m.type] || m.type}
                   {m.town ? ` — ${m.town}` : ''}
@@ -63,7 +75,25 @@ export default async function AdminMinistriesPage({
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <form action={toggleMinistryActive}>
+                <input type="hidden" name="id" value={m.id} />
+                <input type="hidden" name="active" value={(!m.active).toString()} />
+                <button
+                  className={`rounded border px-3 py-1 text-sm ${
+                    m.active
+                      ? 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                      : 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                  }`}
+                  title={
+                    m.active
+                      ? 'Hide this ministry (and its events, videos, livestreams) from the public site'
+                      : 'Make this ministry visible on the public site again'
+                  }
+                >
+                  {m.active ? 'Active' : 'Inactive'}
+                </button>
+              </form>
               <Link href={`/admin/ministries/edit?id=${m.id}`} className="text-sm text-sky-600 underline">
                 Edit
               </Link>

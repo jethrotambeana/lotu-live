@@ -32,6 +32,14 @@ export default async function ChurchFormPage({
         </div>
       )}
 
+      {church && !church.active && (
+        <div className="mb-4 max-w-xl rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          This church is currently <strong>Inactive</strong> — it's hidden from the public site along
+          with its events, videos, and livestreams, and any linked editor's <code>/manage</code> access
+          is paused. Check "Active" below and save to reverse this.
+        </div>
+      )}
+
       <form action={saveChurch} className="max-w-xl space-y-4">
         {church && <input type="hidden" name="id" value={church.id} />}
 
@@ -80,6 +88,12 @@ export default async function ChurchFormPage({
           />
         </div>
 
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="active" defaultChecked={church?.active ?? true} />
+          Active (uncheck to temporarily hide this church — and its events, videos, and livestreams —
+          from the public site without deleting it)
+        </label>
+
         <button type="submit" className="rounded bg-sky-600 px-5 py-2 text-white">
           {church ? 'Save Changes' : 'Create Church'}
         </button>
@@ -98,6 +112,12 @@ export default async function ChurchFormPage({
                   <span className="text-amber-600">(Pending Activation — see Admin → Submissions)</span>
                 )}
               </p>
+              {!church.active && (
+                <p className="mt-1 text-xs text-amber-700">
+                  This church is Inactive, so this editor's /manage access is currently paused
+                  regardless of the status above.
+                </p>
+              )}
               <form action={unlinkChurchEditorFromEdit} className="mt-2">
                 <input type="hidden" name="profileId" value={currentEditor.id} />
                 <input type="hidden" name="churchId" value={church.id} />

@@ -27,5 +27,18 @@ export async function requireEditor() {
     ? { type: 'church', id: profile.church_id }
     : { type: 'ministry', id: profile.ministry_id as string };
 
+  // Confirm the linked church/ministry is currently Active. The public
+  // read policy on churches/ministries (the only SELECT policy that ever
+  // granted a plain editor read access to their own row — "editor update
+  // own church/ministry" only covers UPDATE) now requires active = true.
+  // So an Inactive record is invisible here even though profiles still
+  // points at it, and that's exactly the signal we want: treat "can't see
+  // it" as "editor access is suspended while Inactive," rather than
+  // letting the rest of /manage crash on a missing record.
+  const table = scope.type === 'church' ? 'churches' : 'ministries';
+  const { data: record } = await supabase.from(table).select('id').eq('id', scope.id).maybeSingle();
+
+  if (!record) redirect('/account-inactive');
+
   return { supabase, user, scope };
 }

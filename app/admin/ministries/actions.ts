@@ -33,6 +33,7 @@ export async function saveMinistry(formData: FormData) {
     youtube: (formData.get('youtube') as string) || null,
     description: (formData.get('description') as string) || null,
     approved: formData.get('approved') === 'on',
+    active: formData.get('active') === 'on',
   };
 
   if (id) {
@@ -47,6 +48,30 @@ export async function saveMinistry(formData: FormData) {
       console.error('Failed to create ministry:', error);
       throw new Error(`Failed to save: ${error.message}`);
     }
+  }
+
+  revalidatePath('/admin/ministries');
+  revalidatePath('/ministries');
+  redirect('/admin/ministries');
+}
+
+// Quick Active/Inactive toggle from the list page — same one-click pattern
+// as the Livestreams Show/Hide toggle and the churches list. Deliberately
+// a separate column from `approved` (which governs the original
+// submission-review gate and isn't touched here). Setting active = false
+// immediately hides the ministry, and (via the cascading RLS policies) its
+// events, videos, and livestreams too, without touching any of their own
+// approved/visible flags — flipping active back on restores everything
+// exactly as it was.
+export async function toggleMinistryActive(formData: FormData) {
+  const id = formData.get('id') as string;
+  const active = formData.get('active') === 'true';
+  const supabase = createClient();
+
+  const { error } = await supabase.from('ministries').update({ active }).eq('id', id);
+  if (error) {
+    console.error('Failed to toggle ministry active state:', error);
+    redirect(`/admin/ministries?error=${encodeURIComponent(`Failed to update status: ${error.message}`)}`);
   }
 
   revalidatePath('/admin/ministries');

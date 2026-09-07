@@ -46,6 +46,14 @@ export default async function MinistryFormPage({
         </div>
       )}
 
+      {ministry && !ministry.active && (
+        <div className="mb-4 max-w-xl rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          This ministry is currently <strong>Inactive</strong> — it's hidden from the public site along
+          with its events, videos, and livestreams, and any linked editor's <code>/manage</code> access
+          is paused. Check "Active" below and save to reverse this.
+        </div>
+      )}
+
       <form action={saveMinistry} className="max-w-xl space-y-4">
         {ministry && <input type="hidden" name="id" value={ministry.id} />}
 
@@ -119,10 +127,17 @@ export default async function MinistryFormPage({
           />
         </div>
 
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="approved" defaultChecked={ministry?.approved ?? true} />
-          Approved (visible on the public site)
-        </label>
+        <div className="space-y-2 rounded border border-slate-200 p-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="approved" defaultChecked={ministry?.approved ?? true} />
+            Approved (from the original submission review — leave checked; unrelated to the toggle below)
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="active" defaultChecked={ministry?.active ?? true} />
+            Active (uncheck to temporarily hide this ministry — and its events, videos, and livestreams —
+            from the public site without deleting it)
+          </label>
+        </div>
 
         <button type="submit" className="rounded bg-sky-600 px-5 py-2 text-white">
           {ministry ? 'Save Changes' : 'Create Ministry'}
@@ -142,6 +157,12 @@ export default async function MinistryFormPage({
                   <span className="text-amber-600">(Pending Activation — see Admin → Submissions)</span>
                 )}
               </p>
+              {!ministry.active && (
+                <p className="mt-1 text-xs text-amber-700">
+                  This ministry is Inactive, so this editor's /manage access is currently paused
+                  regardless of the status above.
+                </p>
+              )}
               <form action={unlinkMinistryEditorFromEdit} className="mt-2">
                 <input type="hidden" name="profileId" value={currentEditor.id} />
                 <input type="hidden" name="ministryId" value={ministry.id} />

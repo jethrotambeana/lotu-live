@@ -32,6 +32,7 @@ export async function saveChurch(formData: FormData) {
     youtube: (formData.get('youtube') as string) || null,
     description: (formData.get('description') as string) || null,
     worship_times: (formData.get('worship_times') as string) || null,
+    active: formData.get('active') === 'on',
   };
 
   if (id) {
@@ -46,6 +47,28 @@ export async function saveChurch(formData: FormData) {
       console.error('Failed to create church:', error);
       throw new Error(`Failed to save church: ${error.message}`);
     }
+  }
+
+  revalidatePath('/admin/churches');
+  revalidatePath('/churches');
+  redirect('/admin/churches');
+}
+
+// Quick Active/Inactive toggle from the list page — same one-click pattern
+// as the Livestreams Show/Hide toggle. Setting active = false immediately
+// hides the church, and (via the cascading RLS policies) its events,
+// videos, and livestreams too, without touching any of their own
+// approved/visible flags — flipping active back on restores everything
+// exactly as it was.
+export async function toggleChurchActive(formData: FormData) {
+  const id = formData.get('id') as string;
+  const active = formData.get('active') === 'true';
+  const supabase = createClient();
+
+  const { error } = await supabase.from('churches').update({ active }).eq('id', id);
+  if (error) {
+    console.error('Failed to toggle church active state:', error);
+    redirect(`/admin/churches?error=${encodeURIComponent(`Failed to update status: ${error.message}`)}`);
   }
 
   revalidatePath('/admin/churches');
