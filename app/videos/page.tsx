@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import FilterBar from '@/components/FilterBar';
 import SeriesCard from '@/components/SeriesCard';
+import PageBanner from '@/components/PageBanner';
 
 export default async function VideosPage({
   searchParams,
@@ -91,59 +92,64 @@ export default async function VideosPage({
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold">Latest Videos</h1>
+    <>
+      <PageBanner src="/banner-videos.jpg" alt="Videos — LOTU.LIVE" />
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        <h1 className="sr-only">Latest Videos</h1>
 
-      <FilterBar
-        filters={[
-          {
-            name: 'category',
-            label: 'All Categories',
-            options: (categories ?? []).map((c) => ({ value: c.id, label: c.name })),
-          },
-          {
-            name: 'language',
-            label: 'All Languages',
-            options: languages.map((l) => ({ value: l, label: l })),
-          },
-          {
-            name: 'church',
-            label: 'All Churches',
-            options: (churches ?? []).map((c) => ({ value: c.id, label: c.name })),
-          },
-          {
-            name: 'ministry',
-            label: 'All Ministries',
-            options: (ministries ?? []).map((m) => ({ value: m.id, label: m.name })),
-          },
-        ]}
-      />
+        <FilterBar
+          filters={[
+            {
+              name: 'category',
+              label: 'All Categories',
+              options: (categories ?? []).map((c) => ({ value: c.id, label: c.name })),
+            },
+            {
+              name: 'language',
+              label: 'All Languages',
+              options: languages.map((l) => ({ value: l, label: l })),
+            },
+            {
+              name: 'church',
+              label: 'All Churches',
+              options: (churches ?? []).map((c) => ({ value: c.id, label: c.name })),
+            },
+            {
+              name: 'ministry',
+              label: 'All Ministries',
+              options: (ministries ?? []).map((m) => ({ value: m.id, label: m.name })),
+            },
+          ]}
+        />
 
-      {items.length > 0 ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-          {items.map((item) =>
-            item.kind === 'series' ? (
-              <SeriesCard
-                key={`series-${item.slug}`}
-                slug={item.slug}
-                name={item.name}
-                coverImage={item.coverImage}
-                episodeCount={item.episodeCount}
-              />
-            ) : (
-              <Link key={item.slug} href={`/video/${item.slug}`} className="block">
-                <div className="relative aspect-video overflow-hidden rounded bg-slate-100">
-                  {item.thumbnail && <Image src={item.thumbnail} alt={item.title} fill className="object-cover" />}
-                </div>
-                <p className="mt-2 text-sm font-medium">{item.title}</p>
-                {item.speaker && <p className="text-xs text-slate-500">{item.speaker}</p>}
-              </Link>
-            )
-          )}
-        </div>
-      ) : (
-        <p className="text-slate-500">No videos match these filters.</p>
-      )}
-    </div>
+        {items.length > 0 ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+            {items.map((item) =>
+              item.kind === 'series' ? (
+                <SeriesCard
+                  key={`series-${item.slug}`}
+                  slug={item.slug}
+                  name={item.name}
+                  coverImage={item.coverImage}
+                  episodeCount={item.episodeCount}
+                />
+              ) : (
+                <Link key={item.slug} href={`/video/${item.slug}`} className="block">
+                  <div className="relative aspect-video overflow-hidden rounded bg-slate-100">
+                    {item.thumbnail && (
+                      <Image src={item.thumbnail} alt={item.title} fill className="object-cover" />
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm font-medium">{item.title}</p>
+                  {item.speaker && <p className="text-xs text-slate-500">{item.speaker}</p>}
+                </Link>
+              )
+            )}
+          </div>
+        ) : (
+          <p className="text-slate-500">No videos match these filters.</p>
+        )}
+      </div>
+    </>
   );
 }

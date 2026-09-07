@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabaseServer';
 import LiveCard from '@/components/LiveCard';
 import FilterBar from '@/components/FilterBar';
+import PageBanner from '@/components/PageBanner';
 
 export default async function LiveDirectoryPage({
   searchParams,
@@ -31,59 +32,64 @@ export default async function LiveDirectoryPage({
   const { data: streams } = await query.limit(50);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold">Watch Live</h1>
+    <>
+      <PageBanner src="/banner-live.jpg" alt="Watch Live — LOTU.LIVE" />
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        {/* Visually hidden — the banner above already shows this
+            graphically; kept in markup for accessibility/SEO. */}
+        <h1 className="sr-only">Watch Live</h1>
 
-      <FilterBar
-        filters={[
-          {
-            name: 'country',
-            label: 'All Countries',
-            options: (countries ?? []).map((c) => ({ value: c.id, label: c.name })),
-          },
-          {
-            name: 'type',
-            label: 'Any Type',
-            options: [
-              { value: 'church', label: 'Church' },
-              { value: 'ministry', label: 'Ministry' },
-              { value: 'event', label: 'Event' },
-              { value: 'organisation', label: 'Organisation' },
-            ],
-          },
-          {
-            name: 'status',
-            label: 'Any Status',
-            options: [
-              { value: 'live', label: 'Live' },
-              { value: 'upcoming', label: 'Upcoming' },
-              { value: 'scheduled', label: 'Scheduled' },
-              { value: 'offline', label: 'Offline' },
-            ],
-          },
-          {
-            name: 'language',
-            label: 'All Languages',
-            options: languages.map((l) => ({ value: l, label: l })),
-          },
-        ]}
-      />
+        <FilterBar
+          filters={[
+            {
+              name: 'country',
+              label: 'All Countries',
+              options: (countries ?? []).map((c) => ({ value: c.id, label: c.name })),
+            },
+            {
+              name: 'type',
+              label: 'Any Type',
+              options: [
+                { value: 'church', label: 'Church' },
+                { value: 'ministry', label: 'Ministry' },
+                { value: 'event', label: 'Event' },
+                { value: 'organisation', label: 'Organisation' },
+              ],
+            },
+            {
+              name: 'status',
+              label: 'Any Status',
+              options: [
+                { value: 'live', label: 'Live' },
+                { value: 'upcoming', label: 'Upcoming' },
+                { value: 'scheduled', label: 'Scheduled' },
+                { value: 'offline', label: 'Offline' },
+              ],
+            },
+            {
+              name: 'language',
+              label: 'All Languages',
+              options: languages.map((l) => ({ value: l, label: l })),
+            },
+          ]}
+        />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-        {(streams ?? []).map((s) => (
-          <LiveCard
-            key={s.slug}
-            slug={s.slug}
-            name={s.name}
-            location={s.location}
-            status={s.status as any}
-            previewImage={s.preview_image}
-          />
-        ))}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+          {(streams ?? []).map((s) => (
+            <LiveCard
+              key={s.slug}
+              slug={s.slug}
+              name={s.name}
+              location={s.location}
+              status={s.status as any}
+              previewImage={s.preview_image}
+            />
+          ))}
+        </div>
+        {(!streams || streams.length === 0) && (
+          <p className="text-slate-500">No broadcasts match these filters.</p>
+        )}
       </div>
-      {(!streams || streams.length === 0) && (
-        <p className="text-slate-500">No broadcasts match these filters.</p>
-      )}
-    </div>
+    </>
   );
 }

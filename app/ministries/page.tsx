@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
 import FilterBar from '@/components/FilterBar';
 import MinistryCard from '@/components/MinistryCard';
+import PageBanner from '@/components/PageBanner';
 
 const MINISTRY_TYPES = [
   { value: 'music_singing', label: 'Music / Singing' },
@@ -33,47 +34,50 @@ export default async function MinistriesPage({
   const { data: ministries } = await query.order('name');
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold">Ministries</h1>
+    <>
+      <PageBanner src="/banner-ministries.jpg" alt="Ministries — LOTU.LIVE" />
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        <h1 className="sr-only">Ministries</h1>
 
-      <FilterBar
-        filters={[
-          {
-            name: 'country',
-            label: 'All Countries',
-            options: (countries ?? []).map((c) => ({ value: c.id, label: c.name })),
-          },
-          {
-            name: 'type',
-            label: 'All Types',
-            options: MINISTRY_TYPES,
-          },
-        ]}
-      />
+        <FilterBar
+          filters={[
+            {
+              name: 'country',
+              label: 'All Countries',
+              options: (countries ?? []).map((c) => ({ value: c.id, label: c.name })),
+            },
+            {
+              name: 'type',
+              label: 'All Types',
+              options: MINISTRY_TYPES,
+            },
+          ]}
+        />
 
-      {ministries && ministries.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-          {ministries.map((m: any) => (
-            <MinistryCard
-              key={m.slug}
-              slug={m.slug}
-              name={m.name}
-              type={m.type}
-              town={m.town}
-              churchName={m.churches?.name}
-              logoUrl={m.logo_url}
-            />
-          ))}
-        </div>
-      ) : (
-        <p className="text-slate-500">
-          No ministries match these filters.{' '}
-          <Link href="/submit-ministry" className="underline">
-            Add your ministry
-          </Link>
-          .
-        </p>
-      )}
-    </div>
+        {ministries && ministries.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {ministries.map((m: any) => (
+              <MinistryCard
+                key={m.slug}
+                slug={m.slug}
+                name={m.name}
+                type={m.type}
+                town={m.town}
+                churchName={m.churches?.name}
+                logoUrl={m.logo_url}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-slate-500">
+            No ministries match these filters.{' '}
+            <Link href="/submit-ministry" className="underline">
+              Add your ministry
+            </Link>
+            .
+          </p>
+        )}
+      </div>
+    </>
   );
 }

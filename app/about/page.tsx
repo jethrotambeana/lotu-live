@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabaseServer';
 import Image from 'next/image';
+import PageBanner from '@/components/PageBanner';
 
 const FALLBACK = {
   tagline: 'The Pacific Gospel Media Network',
@@ -23,21 +24,24 @@ export default async function AboutPage() {
   const paragraphs = content.split(/\n\s*\n/).filter(Boolean);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="mb-4 text-2xl font-bold">About LOTU.LIVE</h1>
-      <p className="text-lg font-medium text-sky-600">{tagline}</p>
+    <>
+      <PageBanner src="/banner-about.jpg" alt="About — LOTU.LIVE" />
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <h1 className="sr-only">About LOTU.LIVE</h1>
+        <p className="text-lg font-medium text-sky-600">{tagline}</p>
 
-      {imageUrl && (
-        <div className="relative mt-6 aspect-video w-full overflow-hidden rounded-lg bg-slate-100">
-          <Image src={imageUrl} alt={tagline} fill className="object-cover" />
-        </div>
-      )}
+        {imageUrl && (
+          <div className="relative mt-6 aspect-video w-full overflow-hidden rounded-lg bg-slate-100">
+            <Image src={imageUrl} alt={tagline} fill className="object-cover" />
+          </div>
+        )}
 
-      {paragraphs.map((paragraph, i) => (
-        <p key={i} className="mt-4 text-slate-700">
-          {paragraph}
-        </p>
-      ))}
-    </div>
+        {paragraphs.map((paragraph, i) => (
+          <p key={i} className="mt-4 text-slate-700">
+            {paragraph}
+          </p>
+        ))}
+      </div>
+    </>
   );
 }
