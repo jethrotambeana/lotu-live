@@ -7,6 +7,7 @@ import VideoCard from '@/components/VideoCard';
 import EventCard from '@/components/EventCard';
 import ShareButton from '@/components/ShareButton';
 import SocialLinks from '@/components/SocialLinks';
+import { getScheduleText } from '@/lib/schedule';
 
 export default async function ChurchPage({ params }: { params: { slug: string } }) {
   const supabase = createClient();
@@ -17,13 +18,15 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
     .single();
   if (!church) return notFound();
 
-  const [{ data: liveNow }, { data: videos }, { data: events }] = await Promise.all([
+  const [{ data: streams }, { data: videos }, { data: events }] = await Promise.all([
+    // All visible livestream channels for this church, regardless of
+    // current status — not just the one that happens to be live right
+    // now. Split into liveNow/otherStreams below.
     supabase
       .from('livestreams')
-      .select('slug, name, location, status, preview_image')
+      .select('slug, name, location, status, preview_image, start_at, stream_schedules(day_of_week, start_time)')
       .eq('church_id', church.id)
-      .eq('visible', true)
-      .eq('status', 'live'),
+      .eq('visible', true),
     supabase
       .from('videos')
       .select('slug, title, thumbnail, speaker, provider, provider_video_id')
@@ -37,6 +40,9 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
       .in('status', ['upcoming', 'current'])
       .order('start_date', { ascending: true }),
   ]);
+
+  const liveNow = (streams ?? []).filter((s) => s.status === 'live');
+  const otherStreams = (streams ?? []).filter((s) => s.status !== 'live');
 
   const directContact = [
     church.phone && { label: church.phone, href: `tel:${church.phone}` },
@@ -85,7 +91,7 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
         </p>
       )}
 
-      {liveNow && liveNow.length > 0 && (
+      {liveNow.length > 0 && (
         <section className="mt-8">
           <h2 className="mb-3 font-semibold">Current Livestream</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -97,6 +103,27 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
                 location={s.location}
                 status={s.status as any}
                 previewImage={s.preview_image}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {otherStreams.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 font-semibold">
+            {liveNow.length > 0 ? 'Other Livestream Channels' : 'Livestreams'}
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {otherStreams.map((s) => (
+              <LiveCard
+                key={s.slug}
+                slug={s.slug}
+                name={s.name}
+                location={s.location}
+                status={s.status as any}
+                previewImage={s.preview_image}
+                scheduleText={getScheduleText(s)}
               />
             ))}
           </div>

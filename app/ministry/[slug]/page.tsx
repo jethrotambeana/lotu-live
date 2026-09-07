@@ -7,6 +7,7 @@ import EventCard from '@/components/EventCard';
 import VideoCard from '@/components/VideoCard';
 import ShareButton from '@/components/ShareButton';
 import SocialLinks from '@/components/SocialLinks';
+import { getScheduleText } from '@/lib/schedule';
 
 const MINISTRY_TYPE_LABELS: Record<string, string> = {
   music_singing: 'Music / Singing',
@@ -28,13 +29,14 @@ export default async function MinistryPage({ params }: { params: { slug: string 
     .single();
   if (!ministry) return notFound();
 
-  const [{ data: liveNow }, { data: events }, { data: videos }] = await Promise.all([
+  const [{ data: streams }, { data: events }, { data: videos }] = await Promise.all([
+    // All visible livestream channels for this ministry, regardless of
+    // current status — split into liveNow/otherStreams below.
     supabase
       .from('livestreams')
-      .select('slug, name, location, status, preview_image')
+      .select('slug, name, location, status, preview_image, start_at, stream_schedules(day_of_week, start_time)')
       .eq('ministry_id', ministry.id)
-      .eq('visible', true)
-      .eq('status', 'live'),
+      .eq('visible', true),
     supabase
       .from('events')
       .select('slug, name, venue, town, start_date, end_date, status, poster_url')
@@ -48,6 +50,9 @@ export default async function MinistryPage({ params }: { params: { slug: string 
       .order('recorded_date', { ascending: false })
       .limit(8),
   ]);
+
+  const liveNow = (streams ?? []).filter((s) => s.status === 'live');
+  const otherStreams = (streams ?? []).filter((s) => s.status !== 'live');
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -99,7 +104,7 @@ export default async function MinistryPage({ params }: { params: { slug: string 
 
       {ministry.description && <p className="mt-6 text-slate-700">{ministry.description}</p>}
 
-      {liveNow && liveNow.length > 0 && (
+      {liveNow.length > 0 && (
         <section className="mt-8">
           <h2 className="mb-3 font-semibold">Current Livestream</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -111,6 +116,27 @@ export default async function MinistryPage({ params }: { params: { slug: string 
                 location={s.location}
                 status={s.status as any}
                 previewImage={s.preview_image}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {otherStreams.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 font-semibold">
+            {liveNow.length > 0 ? 'Other Livestream Channels' : 'Livestreams'}
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {otherStreams.map((s) => (
+              <LiveCard
+                key={s.slug}
+                slug={s.slug}
+                name={s.name}
+                location={s.location}
+                status={s.status as any}
+                previewImage={s.preview_image}
+                scheduleText={getScheduleText(s)}
               />
             ))}
           </div>
