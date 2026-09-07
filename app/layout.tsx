@@ -66,9 +66,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             height={533}
             className="mx-auto h-24 w-auto"
           />
-          <p className="mt-4 text-sm text-slate-400">
-            Vanuatu · Solomon Islands · Papua New Guinea · Fiji
-          </p>
+          <p className="mt-4 text-sm text-slate-400">The Pacific Gospel Media Network</p>
+          <p className="mt-1 text-sm text-slate-400">Connecting the Pacific through Gospel Media</p>
         </footer>
       </body>
     </html>

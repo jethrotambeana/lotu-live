@@ -22,6 +22,11 @@ export default async function CountryPage({ params }: { params: { code: string }
     .select('slug, name, town')
     .eq('country_id', country.id);
 
+  const { data: ministries } = await supabase
+    .from('ministries')
+    .select('slug, name, town')
+    .eq('country_id', country.id);
+
   const { data: events } = await supabase
     .from('events')
     .select('slug, name, start_date')
@@ -46,6 +51,24 @@ export default async function CountryPage({ params }: { params: { code: string }
           </ul>
         ) : (
           <p className="text-slate-500">No churches listed for {countryName} yet.</p>
+        )}
+      </section>
+
+      <section className="mb-8">
+        <h2 className="mb-3 font-semibold">Ministries</h2>
+        {ministries && ministries.length > 0 ? (
+          <ul className="space-y-1">
+            {ministries.map((m) => (
+              <li key={m.slug}>
+                <Link href={`/ministry/${m.slug}`} className="underline">
+                  {m.name}
+                </Link>{' '}
+                <span className="text-sm text-slate-500">— {m.town}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-slate-500">No ministries listed for {countryName} yet.</p>
         )}
       </section>
 
