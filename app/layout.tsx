@@ -28,8 +28,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="relative border-b border-slate-200">
           <nav className="mx-auto flex max-w-6xl items-center justify-between p-4">
             <Link href="/" className="flex items-center">
+              {/* "?v=2" cache-busts Next's image optimizer, which caches
+                  transformed images by URL rather than content and does not
+                  invalidate that cache on redeploy. If logo-header.png is
+                  ever replaced again, bump this to "?v=3" (etc.) or the old
+                  image may keep being served regardless of what's actually
+                  in the file. */}
               <Image
-                src="/logo-header.png"
+                src="/logo-header.png?v=2"
                 alt="LOTU.LIVE"
                 width={600}
                 height={369}
@@ -51,8 +57,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </header>
         <main>{children}</main>
         <footer className="mt-12 bg-black py-10 text-center">
+          {/* Same cache-bust as the header logo above — see that comment. */}
           <Image
-            src="/logo-footer.png"
+            src="/logo-footer.png?v=2"
             alt="LOTU.LIVE — Worship Together. Wherever You Are."
             width={800}
             height={533}

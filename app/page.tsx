@@ -29,12 +29,17 @@ export default async function HomePage() {
           it simply scales shorter on narrow phones rather than losing
           content unpredictably. Buttons sit in their own bar below rather
           than overlaid, since the banner gets too short on mobile to
-          reliably host legible overlay text. */}
+          reliably host legible overlay text.
+          NOTE: the "?v=2" on the src is a deliberate cache-buster — Next's
+          image optimizer caches transformed images by URL, not content,
+          and does not invalidate that cache on redeploy. If this file is
+          ever replaced again, bump this to "?v=3" (etc.) or the old image
+          may keep being served. */}
       <section>
         <h1 className="sr-only">LOTU.LIVE — Worship Together. Wherever You Are.</h1>
         <div className="relative aspect-[2046/768] w-full">
           <Image
-            src="/hero-banner.jpg"
+            src="/hero-banner.jpg?v=2"
             alt="LOTU.LIVE — Worship Together. Wherever You Are. Live streams, inspiring messages, and church services across Vanuatu, Solomon Islands, Papua New Guinea, Fiji and beyond."
             fill
             priority
