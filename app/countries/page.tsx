@@ -17,7 +17,7 @@ export default async function CountriesPage() {
     <>
       <PageBanner src="/banner-countries.jpg" alt="Countries — LOTU.LIVE" />
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <h1 className="sr-only">Countries</h1>
+        <h1 className="mb-6 text-2xl font-bold">Countries</h1>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {(countries ?? []).map((c) => {
             const slug = c.name.toLowerCase().replace(/\s/g, '-');
