@@ -1,0 +1,68 @@
+/* Custom animations used across the site. Imported once in app/layout.tsx.
+   Tailwind's own built-ins (animate-spin, animate-ping, animate-pulse)
+   cover a few effects directly and don't need anything defined here. */
+
+/* Page transition fade — used by app/template.tsx, which Next.js remounts
+   on every navigation (unlike layout.tsx, which persists), so this
+   actually re-triggers per page view rather than only on first load. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-page-fade-in {
+  animation: fade-in 0.35s ease-out;
+}
+
+/* Slow ambient zoom for hero/tab banners — barely perceptible over its
+   full cycle, meant to add quiet motion rather than draw attention to
+   itself. Any element using this needs `overflow-hidden` on its parent,
+   since scale(1.05) exceeds the element's own bounds. */
+@keyframes slow-zoom {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+.animate-slow-zoom {
+  animation: slow-zoom 18s ease-in-out infinite;
+}
+
+/* Shimmer for image placeholders — sits behind every thumbnail/logo
+   <Image fill>, so it's naturally covered once the real image paints in;
+   no loading-state JS needed. Colors match the slate-100/slate-200
+   placeholders already used across the card components. */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+.shimmer-bg {
+  background-image: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* Respects the OS-level "reduce motion" accessibility setting — collapses
+   every animation/transition on the site to effectively instant rather
+   than disabling them outright (which can break code relying on a
+   transitionend/animationend event actually firing). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

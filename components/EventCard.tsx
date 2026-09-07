@@ -25,10 +25,18 @@ export default function EventCard({
   return (
     <Link
       href={`/event/${slug}`}
-      className="block overflow-hidden rounded border border-slate-200 hover:shadow-md transition-shadow"
+      className="group block overflow-hidden rounded border border-slate-200 transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
     >
-      <div className="relative aspect-video bg-slate-100">
-        {poster_url && <Image src={poster_url} alt={name} fill className="object-cover" />}
+      <div className="relative aspect-video overflow-hidden bg-slate-100">
+        <div className="shimmer-bg absolute inset-0" />
+        {poster_url && (
+          <Image
+            src={poster_url}
+            alt={name}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-110"
+          />
+        )}
       </div>
       <div className="p-4">
         <span className="text-xs font-semibold uppercase text-sky-600">{status}</span>

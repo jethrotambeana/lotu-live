@@ -21,9 +21,10 @@ export default function ChurchCard({
   return (
     <Link
       href={`/church/${slug}`}
-      className="flex items-start gap-3 rounded border border-slate-200 p-4 hover:shadow-md transition-shadow"
+      className="flex items-start gap-3 rounded border border-slate-200 p-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
     >
       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-slate-100">
+        <div className="shimmer-bg absolute inset-0" />
         {logo_url && <Image src={logo_url} alt={name} fill className="object-cover" />}
       </div>
       <div>

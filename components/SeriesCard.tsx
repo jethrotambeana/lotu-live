@@ -10,9 +10,17 @@ export interface SeriesCardProps {
 
 export default function SeriesCard({ slug, name, coverImage, episodeCount }: SeriesCardProps) {
   return (
-    <Link href={`/series/${slug}`} className="block">
+    <Link href={`/series/${slug}`} className="group block">
       <div className="relative aspect-video overflow-hidden rounded bg-slate-100">
-        {coverImage && <Image src={coverImage} alt={name} fill className="object-cover" />}
+        <div className="shimmer-bg absolute inset-0" />
+        {coverImage && (
+          <Image
+            src={coverImage}
+            alt={name}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-110"
+          />
+        )}
         <span className="absolute bottom-1.5 right-1.5 rounded bg-black/75 px-2 py-0.5 text-xs font-semibold text-white">
           {episodeCount} episode{episodeCount === 1 ? '' : 's'}
         </span>

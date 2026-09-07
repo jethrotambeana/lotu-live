@@ -1,4 +1,5 @@
 import './globals.css';
+import './animations.css';
 import Link from 'next/link';
 import Image from 'next/image';
 import MobileNav from '@/components/MobileNav';

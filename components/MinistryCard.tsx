@@ -25,9 +25,10 @@ export default function MinistryCard({ slug, name, type, town, churchName, logoU
   return (
     <Link
       href={`/ministry/${slug}`}
-      className="flex items-start gap-3 rounded border border-slate-200 p-4 hover:shadow-md transition-shadow"
+      className="flex items-start gap-3 rounded border border-slate-200 p-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
     >
       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-slate-100">
+        <div className="shimmer-bg absolute inset-0" />
         {logoUrl && <Image src={logoUrl} alt={name} fill className="object-cover" />}
       </div>
       <div>

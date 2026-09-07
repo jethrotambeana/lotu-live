@@ -13,14 +13,24 @@ export default function LiveCard({ slug, name, location, status, previewImage }:
   return (
     <Link
       href={`/watch/${slug}`}
-      className="block overflow-hidden rounded-lg border border-slate-200 hover:shadow-md transition-shadow"
+      className="group block overflow-hidden rounded-lg border border-slate-200 transition-shadow hover:shadow-md"
     >
-      <div className="relative aspect-video bg-slate-100">
+      <div className="relative aspect-video overflow-hidden bg-slate-100">
+        <div className="shimmer-bg absolute inset-0" />
         {previewImage && (
-          <Image src={previewImage} alt={name} fill className="object-cover" />
+          <Image
+            src={previewImage}
+            alt={name}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-110"
+          />
         )}
         {status === 'live' && (
-          <span className="absolute top-2 left-2 rounded bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+          <span className="absolute top-2 left-2 flex items-center gap-1.5 rounded bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+            </span>
             LIVE
           </span>
         )}
