@@ -1,12 +1,14 @@
 import { createClient } from '@/lib/supabaseServer';
+import Link from 'next/link';
 import { saveVideo } from '../actions';
 
 export default async function VideoFormPage({ searchParams }: { searchParams: { id?: string } }) {
   const supabase = createClient();
-  const [{ data: churches }, { data: events }, { data: categories }] = await Promise.all([
+  const [{ data: churches }, { data: events }, { data: categories }, { data: seriesList }] = await Promise.all([
     supabase.from('churches').select('id, name').order('name'),
     supabase.from('events').select('id, name').order('name'),
     supabase.from('categories').select('id, name').order('name'),
+    supabase.from('series').select('id, name').order('name'),
   ]);
 
   let video: any = null;
@@ -65,7 +67,40 @@ export default async function VideoFormPage({ searchParams }: { searchParams: { 
         </div>
 
         <Field label="Speaker" name="speaker" defaultValue={video?.speaker} />
-        <Field label="Series" name="series" defaultValue={video?.series} />
+
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <label className="mb-1 block text-sm font-medium">Series (if part of one)</label>
+            <select
+              name="series_id"
+              defaultValue={video?.series_id ?? ''}
+              className="w-full rounded border border-slate-300 p-2"
+            >
+              <option value="">— None —</option>
+              {(seriesList ?? []).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">Episode #</label>
+            <input
+              type="number"
+              name="episode_number"
+              defaultValue={video?.episode_number ?? ''}
+              className="w-full rounded border border-slate-300 p-2"
+            />
+          </div>
+        </div>
+        <p className="-mt-2 text-xs text-slate-500">
+          Don't see the series you need?{' '}
+          <Link href="/admin/series/edit" className="text-sky-600 underline">
+            Create one
+          </Link>{' '}
+          first, then come back here.
+        </p>
 
         <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           Only enter the provider's own ID or URL below — never paste iframe/embed HTML. The site

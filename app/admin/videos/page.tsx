@@ -19,7 +19,7 @@ export default async function AdminVideosPage({
   let query = supabase
     .from('videos')
     .select(
-      'id, title, provider, speaker, series, recorded_date, churches(name), ministries(name), events(name), approved'
+      'id, title, provider, speaker, recorded_date, churches(name), ministries(name), events(name), series(name), episode_number, approved'
     );
 
   if (searchParams.church) query = query.eq('church_id', searchParams.church);
@@ -73,10 +73,12 @@ export default async function AdminVideosPage({
               <p className="text-sm text-slate-500">
                 {v.provider}
                 {v.speaker ? ` · ${v.speaker}` : ''}
-                {v.series ? ` · ${v.series}` : ''}
                 {v.churches?.name ? ` · ${v.churches.name}` : ''}
                 {v.ministries?.name ? ` · ${v.ministries.name}` : ''}
                 {v.events?.name ? ` · ${v.events.name}` : ''}
+                {v.series?.name
+                  ? ` · ${v.series.name}${v.episode_number ? ` (Ep. ${v.episode_number})` : ''}`
+                  : ''}
                 {v.recorded_date ? ` · ${v.recorded_date}` : ''}
               </p>
             </div>

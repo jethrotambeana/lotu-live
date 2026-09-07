@@ -60,13 +60,19 @@ export async function saveVideo(formData: FormData) {
     // cloudinary: no auto-derivation yet — leave null, admin pastes manually.
   }
 
+  const episodeNumberRaw = formData.get('episode_number') as string;
+
   const record = {
     title,
     slug: (formData.get('slug') as string) || slugify(title),
     church_id: (formData.get('church_id') as string) || null,
     event_id: (formData.get('event_id') as string) || null,
     speaker: (formData.get('speaker') as string) || null,
-    series: (formData.get('series') as string) || null,
+    // `series` (free text) is deprecated in favor of series_id — no longer
+    // written here. The column is left in the database, untouched, purely
+    // as a historical record; see sql/2026-09-07_series_feature.sql.
+    series_id: (formData.get('series_id') as string) || null,
+    episode_number: episodeNumberRaw && episodeNumberRaw.trim() !== '' ? parseInt(episodeNumberRaw, 10) : null,
     provider,
     provider_video_id: providerVideoId,
     thumbnail,
@@ -101,6 +107,7 @@ export async function saveVideo(formData: FormData) {
   }
 
   revalidatePath('/admin/videos');
+  revalidatePath('/admin/series');
   revalidatePath('/videos');
   revalidatePath('/');
   redirect('/admin/videos');
