@@ -93,7 +93,7 @@ export default async function VideosPage({
 
   return (
     <>
-      <PageBanner src="/banner-videos.jpg" alt="Videos — LOTU.LIVE" />
+      <PageBanner src="/banner-videos.jpg" mobileSrc="/banner-videos-mobile.jpg" alt="Videos — LOTU.LIVE" />
       <div className="mx-auto max-w-6xl px-4 py-8">
         <h1 className="mb-6 text-2xl font-bold">Latest Videos</h1>
 

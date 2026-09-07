@@ -25,7 +25,7 @@ export default async function AboutPage() {
 
   return (
     <>
-      <PageBanner src="/banner-about.jpg" alt="About — LOTU.LIVE" />
+      <PageBanner src="/banner-about.jpg" mobileSrc="/banner-about-mobile.jpg" alt="About — LOTU.LIVE" />
       <div className="mx-auto max-w-3xl px-4 py-12">
         <h1 className="mb-4 text-2xl font-bold">About LOTU.LIVE</h1>
         <p className="text-lg font-medium text-sky-600">{tagline}</p>

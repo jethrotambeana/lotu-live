@@ -29,7 +29,7 @@ export default async function EventsPage({
 
   return (
     <>
-      <PageBanner src="/banner-events.jpg" alt="Events — LOTU.LIVE" />
+      <PageBanner src="/banner-events.jpg" mobileSrc="/banner-events-mobile.jpg" alt="Events — LOTU.LIVE" />
       <div className="mx-auto max-w-6xl px-4 py-8">
         <h1 className="mb-6 text-2xl font-bold">Events</h1>
 

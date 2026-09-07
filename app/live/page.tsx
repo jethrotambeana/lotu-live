@@ -33,7 +33,7 @@ export default async function LiveDirectoryPage({
 
   return (
     <>
-      <PageBanner src="/banner-live.jpg" alt="Watch Live — LOTU.LIVE" />
+      <PageBanner src="/banner-live.jpg" mobileSrc="/banner-live-mobile.jpg" alt="Watch Live — LOTU.LIVE" />
       <div className="mx-auto max-w-6xl px-4 py-8">
         <h1 className="mb-6 text-2xl font-bold">Watch Live</h1>
 

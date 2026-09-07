@@ -1,26 +1,30 @@
 import Image from 'next/image';
 
-// Desktop: full 2048x768 image, uncropped, exactly as before.
-// Mobile (below Tailwind's `sm` breakpoint, 640px): these images were
-// designed as wide "billboard" graphics — at native ratio on a narrow
-// phone they shrink down to ~270px tall, making the tagline and icon row
-// illegible. Below `sm`, this switches to a taller 4:3 box and crops to
-// the image's LEFT side via object-left — that's where the "Lotu.live
-// [Title]" wordmark sits in all 8 banner images, so mobile users see a
-// larger, legible version of the title area instead of a tiny, unreadable
-// full-width strip. The right-side decorative photo collage is cropped
-// off on mobile only; desktop is unaffected.
-export default function PageBanner({ src, alt }: { src: string; alt: string }) {
+// Two real, purpose-designed images now — not one image cropped by CSS.
+// `mobileSrc` (1448x1086, 4:3) renders below the `sm` breakpoint (640px);
+// `src` (2048x768) renders at `sm` and above, exactly as before. Only one
+// of the two <Image> elements is ever visible at a time — `hidden`/`block`
+// toggling, not display:none-via-JS, so there's no layout shift and no
+// double image request (Next.js's Image component only fetches images
+// that are actually going to render, and only one of these two is active
+// at any given viewport width).
+export default function PageBanner({
+  src,
+  mobileSrc,
+  alt,
+}: {
+  src: string;
+  mobileSrc: string;
+  alt: string;
+}) {
   return (
-    <div className="relative aspect-[4/3] w-full sm:aspect-[2048/768]">
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        priority
-        sizes="100vw"
-        className="object-cover object-left sm:object-center"
-      />
-    </div>
+    <>
+      <div className="relative aspect-[1448/1086] w-full sm:hidden">
+        <Image src={mobileSrc} alt={alt} fill priority sizes="100vw" className="object-cover" />
+      </div>
+      <div className="relative hidden aspect-[2048/768] w-full sm:block">
+        <Image src={src} alt={alt} fill priority sizes="100vw" className="object-cover" />
+      </div>
+    </>
   );
 }

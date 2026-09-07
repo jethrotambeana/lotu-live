@@ -35,7 +35,11 @@ export default async function MinistriesPage({
 
   return (
     <>
-      <PageBanner src="/banner-ministries.jpg" alt="Ministries — LOTU.LIVE" />
+      <PageBanner
+        src="/banner-ministries.jpg"
+        mobileSrc="/banner-ministries-mobile.jpg"
+        alt="Ministries — LOTU.LIVE"
+      />
       <div className="mx-auto max-w-6xl px-4 py-8">
         <h1 className="mb-6 text-2xl font-bold">Ministries</h1>
 

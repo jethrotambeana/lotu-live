@@ -33,7 +33,7 @@ export default async function ChurchesPage({
 
   return (
     <>
-      <PageBanner src="/banner-churches.jpg" alt="Churches — LOTU.LIVE" />
+      <PageBanner src="/banner-churches.jpg" mobileSrc="/banner-churches-mobile.jpg" alt="Churches — LOTU.LIVE" />
       <div className="mx-auto max-w-6xl px-4 py-8">
         <h1 className="mb-6 text-2xl font-bold">Church Directory</h1>
 
