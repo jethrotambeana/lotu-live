@@ -9,6 +9,7 @@ export default async function ManageLayout({ children }: { children: React.React
     { href: '/manage', label: scope.type === 'church' ? 'Church Profile' : 'Ministry Profile' },
     { href: '/manage/events', label: 'Events' },
     { href: '/manage/videos', label: 'Videos' },
+    { href: '/manage/livestreams', label: 'Livestreams' },
   ];
 
   return (
