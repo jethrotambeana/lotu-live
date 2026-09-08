@@ -94,8 +94,18 @@ export default function VideoThumbnail({
       {previewing && previewSrc && (
         <iframe
           src={previewSrc}
-          className="absolute inset-0 h-full w-full"
+          // pointer-events-none is the actual fix: the embed (YouTube in
+          // particular) still renders its own clickable watermark/logo
+          // even with controls=0, and an iframe always intercepts clicks
+          // within its bounds regardless of what's stacked underneath it.
+          // This preview is meant to be a purely decorative ambient loop,
+          // not an interactive mini-player, so making it click-through
+          // lets clicks fall through to the surrounding <Link> and
+          // reliably navigate to the video's own page on this site
+          // instead of occasionally opening YouTube directly.
+          className="pointer-events-none absolute inset-0 h-full w-full"
           allow="autoplay; encrypted-media"
+          tabIndex={-1}
           title={`${title} preview`}
         />
       )}
