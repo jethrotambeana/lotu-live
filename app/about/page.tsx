@@ -1,6 +1,27 @@
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabaseServer';
 import Image from 'next/image';
 import PageBanner from '@/components/PageBanner';
+
+const TITLE = 'About — LOTU.LIVE';
+const DESCRIPTION = 'Our story, vision and mission — reaching people across the Pacific through gospel media.';
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [{ url: '/banner-about.jpg', width: 2048, height: 768 }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ['/banner-about.jpg'],
+  },
+};
 
 const FALLBACK = {
   tagline: 'The Pacific Gospel Media Network',

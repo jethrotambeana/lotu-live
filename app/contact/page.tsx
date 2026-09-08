@@ -1,5 +1,26 @@
+import type { Metadata } from 'next';
 import ContactForm from '@/components/ContactForm';
 import PageBanner from '@/components/PageBanner';
+
+const TITLE = 'Contact Us — LOTU.LIVE';
+const DESCRIPTION = 'Questions, feedback, prayer requests or partnerships — get in touch with LOTU.LIVE.';
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [{ url: '/banner-contact.jpg', width: 2048, height: 768 }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ['/banner-contact.jpg'],
+  },
+};
 
 export default function ContactPage() {
   return (

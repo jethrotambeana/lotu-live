@@ -1,6 +1,27 @@
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
 import PageBanner from '@/components/PageBanner';
+
+const TITLE = 'Countries — LOTU.LIVE';
+const DESCRIPTION = 'Explore LOTU.LIVE by country — Vanuatu, Solomon Islands, Papua New Guinea, Fiji and beyond.';
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [{ url: '/banner-countries.jpg', width: 2048, height: 768 }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ['/banner-countries.jpg'],
+  },
+};
 
 const SLUG_TO_LABEL: Record<string, string> = {
   vanuatu: 'Vanuatu',

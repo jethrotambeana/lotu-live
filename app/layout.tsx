@@ -1,14 +1,31 @@
+import type { Metadata } from 'next';
 import './globals.css';
 import './animations.css';
 import Link from 'next/link';
 import Image from 'next/image';
 import MobileNav from '@/components/MobileNav';
 
-export const metadata = {
+const SITE_TITLE = 'LOTU.LIVE — The Pacific Gospel Media Network';
+const SITE_DESCRIPTION =
+  'Watch live worship, evangelism, youth programs and Christian media from Seventh-day Adventist churches across Vanuatu, Solomon Islands, Papua New Guinea and Fiji.';
+
+export const metadata: Metadata = {
   metadataBase: new URL('https://lotu.live'),
-  title: 'LOTU.LIVE — The Pacific Gospel Media Network',
-  description:
-    'Watch live worship, evangelism, youth programs and Christian media from Seventh-day Adventist churches across Vanuatu, Solomon Islands, Papua New Guinea and Fiji.',
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [{ url: '/hero-banner.jpg', width: 2046, height: 768 }],
+    type: 'website',
+    siteName: 'LOTU.LIVE',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ['/hero-banner.jpg'],
+  },
 };
 
 const NAV = [

@@ -1,8 +1,30 @@
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabaseServer';
 import FilterBar from '@/components/FilterBar';
 import SeriesCard from '@/components/SeriesCard';
 import VideoCard from '@/components/VideoCard';
 import PageBanner from '@/components/PageBanner';
+
+const TITLE = 'Latest Videos — LOTU.LIVE';
+const DESCRIPTION =
+  'Sermons, testimonies, Bible study and inspiring media from churches and ministries across the Pacific.';
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [{ url: '/banner-videos.jpg', width: 2048, height: 768 }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ['/banner-videos.jpg'],
+  },
+};
 
 export default async function VideosPage({
   searchParams,

@@ -1,8 +1,30 @@
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
 import FilterBar from '@/components/FilterBar';
 import ChurchCard from '@/components/ChurchCard';
 import PageBanner from '@/components/PageBanner';
+
+const TITLE = 'Church Directory — LOTU.LIVE';
+const DESCRIPTION =
+  'Find Seventh-day Adventist churches across Vanuatu, Solomon Islands, Papua New Guinea, Fiji and beyond.';
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [{ url: '/banner-churches.jpg', width: 2048, height: 768 }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ['/banner-churches.jpg'],
+  },
+};
 
 export default async function ChurchesPage({
   searchParams,

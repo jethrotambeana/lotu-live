@@ -1,8 +1,29 @@
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
 import FilterBar from '@/components/FilterBar';
 import MinistryCard from '@/components/MinistryCard';
 import PageBanner from '@/components/PageBanner';
+
+const TITLE = 'Ministries — LOTU.LIVE';
+const DESCRIPTION = 'Explore ministries serving across the Pacific — music, youth, media, outreach and more.';
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [{ url: '/banner-ministries.jpg', width: 2048, height: 768 }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ['/banner-ministries.jpg'],
+  },
+};
 
 const MINISTRY_TYPES = [
   { value: 'music_singing', label: 'Music / Singing' },

@@ -1,7 +1,28 @@
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabaseServer';
 import EventCard from '@/components/EventCard';
 import FilterBar from '@/components/FilterBar';
 import PageBanner from '@/components/PageBanner';
+
+const TITLE = 'Events — LOTU.LIVE';
+const DESCRIPTION = 'Upcoming conferences, campaigns, and gatherings across the Pacific islands.';
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [{ url: '/banner-events.jpg', width: 2048, height: 768 }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ['/banner-events.jpg'],
+  },
+};
 
 export default async function EventsPage({
   searchParams,

@@ -1,7 +1,29 @@
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabaseServer';
 import LiveCard from '@/components/LiveCard';
 import FilterBar from '@/components/FilterBar';
 import PageBanner from '@/components/PageBanner';
+
+const TITLE = 'Watch Live — LOTU.LIVE';
+const DESCRIPTION =
+  'Watch live worship services, evangelistic meetings, and youth programs streaming now across Vanuatu, Solomon Islands, Papua New Guinea, Fiji and beyond.';
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [{ url: '/banner-live.jpg', width: 2048, height: 768 }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ['/banner-live.jpg'],
+  },
+};
 
 export default async function LiveDirectoryPage({
   searchParams,
