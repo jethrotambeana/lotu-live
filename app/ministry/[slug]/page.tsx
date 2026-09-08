@@ -1,3 +1,5 @@
+import { cache } from 'react';
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabaseServer';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
@@ -20,15 +22,47 @@ const MINISTRY_TYPE_LABELS: Record<string, string> = {
   other: 'Other',
 };
 
-export default async function MinistryPage({ params }: { params: { slug: string } }) {
+const getMinistry = cache(async (slug: string) => {
   const supabase = createClient();
-  const { data: ministry } = await supabase
+  const { data } = await supabase
     .from('ministries')
     .select('*, countries(name), churches(name, slug)')
-    .eq('slug', params.slug)
+    .eq('slug', slug)
     .single();
+  return data;
+});
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const ministry = await getMinistry(params.slug);
+  if (!ministry) return {};
+
+  const location = [ministry.town, ministry.island_province, ministry.countries?.name].filter(Boolean).join(', ');
+  const description = ministry.description || [ministry.name, location].filter(Boolean).join(' — ');
+  const image = ministry.logo_url || '/og-default.jpg';
+
+  return {
+    title: `${ministry.name} — LOTU.LIVE`,
+    description,
+    openGraph: {
+      title: ministry.name,
+      description,
+      images: [{ url: image }],
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: ministry.name,
+      description,
+      images: [image],
+    },
+  };
+}
+
+export default async function MinistryPage({ params }: { params: { slug: string } }) {
+  const ministry = await getMinistry(params.slug);
   if (!ministry) return notFound();
 
+  const supabase = createClient();
   const [{ data: streams }, { data: events }, { data: videos }] = await Promise.all([
     // All visible livestream channels for this ministry, regardless of
     // current status — split into liveNow/otherStreams below.

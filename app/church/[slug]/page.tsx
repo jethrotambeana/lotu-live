@@ -1,3 +1,5 @@
+import { cache } from 'react';
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabaseServer';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
@@ -9,15 +11,43 @@ import ShareButton from '@/components/ShareButton';
 import SocialLinks from '@/components/SocialLinks';
 import { getScheduleText } from '@/lib/schedule';
 
-export default async function ChurchPage({ params }: { params: { slug: string } }) {
+const getChurch = cache(async (slug: string) => {
   const supabase = createClient();
-  const { data: church } = await supabase
-    .from('churches')
-    .select('*, countries(name)')
-    .eq('slug', params.slug)
-    .single();
+  const { data } = await supabase.from('churches').select('*, countries(name)').eq('slug', slug).single();
+  return data;
+});
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const church = await getChurch(params.slug);
+  if (!church) return {};
+
+  const location = [church.town, church.island_province, church.countries?.name].filter(Boolean).join(', ');
+  const description = church.description || [`${church.name}`, location].filter(Boolean).join(' — ');
+  const image = church.logo_url || '/og-default.jpg';
+
+  return {
+    title: `${church.name} — LOTU.LIVE`,
+    description,
+    openGraph: {
+      title: church.name,
+      description,
+      images: [{ url: image }],
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: church.name,
+      description,
+      images: [image],
+    },
+  };
+}
+
+export default async function ChurchPage({ params }: { params: { slug: string } }) {
+  const church = await getChurch(params.slug);
   if (!church) return notFound();
 
+  const supabase = createClient();
   const [{ data: streams }, { data: videos }, { data: events }] = await Promise.all([
     // All visible livestream channels for this church, regardless of
     // current status — not just the one that happens to be live right

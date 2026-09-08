@@ -1,3 +1,5 @@
+import { cache } from 'react';
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabaseServer';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
@@ -7,15 +9,47 @@ import VideoCard from '@/components/VideoCard';
 import ShareButton from '@/components/ShareButton';
 import SocialLinks from '@/components/SocialLinks';
 
-export default async function EventPage({ params }: { params: { slug: string } }) {
+const getEvent = cache(async (slug: string) => {
   const supabase = createClient();
-  const { data: event } = await supabase
+  const { data } = await supabase
     .from('events')
     .select('*, countries(name), churches(name, slug), ministries(name, slug)')
-    .eq('slug', params.slug)
+    .eq('slug', slug)
     .single();
+  return data;
+});
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const event = await getEvent(params.slug);
+  if (!event) return {};
+
+  const location = [event.venue, event.town, event.countries?.name].filter(Boolean).join(', ');
+  const description = event.description || [event.start_date, location].filter(Boolean).join(' · ') || `${event.name} on LOTU.LIVE.`;
+  const image = event.poster_url || '/og-default.jpg';
+
+  return {
+    title: `${event.name} — LOTU.LIVE`,
+    description,
+    openGraph: {
+      title: event.name,
+      description,
+      images: [{ url: image, width: 1200, height: 630 }],
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: event.name,
+      description,
+      images: [image],
+    },
+  };
+}
+
+export default async function EventPage({ params }: { params: { slug: string } }) {
+  const event = await getEvent(params.slug);
   if (!event) return notFound();
 
+  const supabase = createClient();
   const [{ data: liveStreams }, { data: videos }] = await Promise.all([
     supabase
       .from('livestreams')

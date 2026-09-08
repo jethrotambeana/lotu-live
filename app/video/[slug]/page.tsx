@@ -1,18 +1,55 @@
+import { cache } from 'react';
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabaseServer';
 import StreamPlayer from '@/components/StreamPlayer';
 import ShareButton from '@/components/ShareButton';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
-export default async function VideoPage({ params }: { params: { slug: string } }) {
+const getVideo = cache(async (slug: string) => {
   const supabase = createClient();
-  const { data: video } = await supabase
+  const { data } = await supabase
     .from('videos')
     .select('*, churches(name, slug), events(name, slug), ministries(name, slug)')
-    .eq('slug', params.slug)
+    .eq('slug', slug)
     .single();
+  return data;
+});
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const video = await getVideo(params.slug);
+  if (!video) return {};
+
+  const description = video.description || `Watch "${video.title}" on LOTU.LIVE.`;
+  // Video thumbnails are already stored as full external URLs (YouTube/
+  // Cloudflare), so no metadataBase resolution needed there — it's only
+  // the /og-default.jpg fallback that relies on metadataBase (set in
+  // app/layout.tsx) to become absolute.
+  const image = video.thumbnail || '/og-default.jpg';
+
+  return {
+    title: `${video.title} — LOTU.LIVE`,
+    description,
+    openGraph: {
+      title: video.title,
+      description,
+      images: [{ url: image, width: 1280, height: 720 }],
+      type: 'video.other',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: video.title,
+      description,
+      images: [image],
+    },
+  };
+}
+
+export default async function VideoPage({ params }: { params: { slug: string } }) {
+  const video = await getVideo(params.slug);
   if (!video) return notFound();
 
+  const supabase = createClient();
   const { data: categoryLinks } = await supabase
     .from('video_categories')
     .select('categories(name)')

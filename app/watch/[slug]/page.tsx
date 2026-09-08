@@ -1,3 +1,5 @@
+import { cache } from 'react';
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabaseServer';
 import StreamPlayer from '@/components/StreamPlayer';
 import ShareButton from '@/components/ShareButton';
@@ -9,15 +11,47 @@ function formatDateTime(value: string | null) {
   return new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-export default async function WatchPage({ params }: { params: { slug: string } }) {
+const getStream = cache(async (slug: string) => {
   const supabase = createClient();
-  const { data: stream } = await supabase
+  const { data } = await supabase
     .from('livestreams')
     .select('*, countries(name), categories(name), churches(name, slug), events(name, slug)')
-    .eq('slug', params.slug)
+    .eq('slug', slug)
     .eq('visible', true)
     .single();
+  return data;
+});
 
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const stream = await getStream(params.slug);
+  if (!stream) return {};
+
+  const description =
+    stream.status === 'live'
+      ? `Watch "${stream.name}" live now on LOTU.LIVE.`
+      : `"${stream.name}" on LOTU.LIVE.`;
+  const image = stream.preview_image || '/og-default.jpg';
+
+  return {
+    title: `${stream.status === 'live' ? '🔴 LIVE — ' : ''}${stream.name} — LOTU.LIVE`,
+    description,
+    openGraph: {
+      title: stream.name,
+      description,
+      images: [{ url: image, width: 1280, height: 720 }],
+      type: 'video.other',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: stream.name,
+      description,
+      images: [image],
+    },
+  };
+}
+
+export default async function WatchPage({ params }: { params: { slug: string } }) {
+  const stream = await getStream(params.slug);
   if (!stream) return notFound();
 
   const locationParts = [stream.location, stream.island_province, stream.countries?.name].filter(Boolean);
