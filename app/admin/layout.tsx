@@ -12,6 +12,7 @@ async function getPendingCounts() {
     { count: pendingEditors },
     { count: pendingEvents },
     { count: pendingVideos },
+    { count: unreadMessages },
   ] = await Promise.all([
     supabase.from('submissions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('event_submissions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
@@ -19,6 +20,7 @@ async function getPendingCounts() {
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pending_editor'),
     supabase.from('events').select('*', { count: 'exact', head: true }).eq('approved', false),
     supabase.from('videos').select('*', { count: 'exact', head: true }).eq('approved', false),
+    supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('read', false),
   ]);
 
   return {
@@ -26,6 +28,7 @@ async function getPendingCounts() {
       (pendingChurchSubs ?? 0) + (pendingEventSubs ?? 0) + (pendingMinistrySubs ?? 0) + (pendingEditors ?? 0),
     events: pendingEvents ?? 0,
     videos: pendingVideos ?? 0,
+    messages: unreadMessages ?? 0,
   };
 }
 
@@ -42,7 +45,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: '/admin/videos', label: 'Videos', badge: counts.videos },
     { href: '/admin/categories', label: 'Categories' },
     { href: '/admin/series', label: 'Series' },
-    { href: '/admin/messages', label: 'Messages' },
+    { href: '/admin/messages', label: 'Messages', badge: counts.messages },
     { href: '/admin/submissions', label: 'Submissions', badge: counts.submissions },
     { href: '/admin/about', label: 'About Page' },
   ];
