@@ -15,14 +15,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: TITLE,
     description: DESCRIPTION,
-    images: [{ url: '/banner-churches.jpg', width: 2048, height: 768 }],
+    images: [{ url: '/banner-churches-og.jpg', width: 1200, height: 630 }],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
     title: TITLE,
     description: DESCRIPTION,
-    images: ['/banner-churches.jpg'],
+    images: ['/banner-churches-og.jpg'],
   },
 };
 
