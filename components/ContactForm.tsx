@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabaseClient';
+import { submitContactMessage } from '@/app/contact/actions';
 
 export default function ContactForm() {
   const [status, setStatus] = useState<'idle' | 'submitting' | 'sent' | 'error'>('idle');
@@ -10,15 +10,16 @@ export default function ContactForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus('submitting');
-    const supabase = createClient();
-    const { error } = await supabase.from('contacts').insert({
-      name: form.name,
-      email: form.email,
-      subject: form.subject,
-      message: form.message,
-      // country_id lookup would go here in a fuller version; storing subject/message covers launch needs
-    });
-    setStatus(error ? 'error' : 'sent');
+
+    const formData = new FormData();
+    formData.set('name', form.name);
+    formData.set('email', form.email);
+    formData.set('country', form.country);
+    formData.set('subject', form.subject);
+    formData.set('message', form.message);
+
+    const result = await submitContactMessage(formData);
+    setStatus(result?.error ? 'error' : 'sent');
   }
 
   if (status === 'sent') {
