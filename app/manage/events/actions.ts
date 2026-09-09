@@ -17,6 +17,8 @@ export async function saveMyEvent(formData: FormData) {
   const scopeColumn = scope.type === 'church' ? 'host_church_id' : 'host_ministry_id';
   const id = formData.get('id') as string | null;
 
+  const posterUrlInput = (formData.get('poster_url') as string) || null;
+
   const record: Record<string, unknown> = {
     name: formData.get('name') as string,
     slug: (formData.get('slug') as string) || slugify(formData.get('name') as string),
@@ -37,7 +39,11 @@ export async function saveMyEvent(formData: FormData) {
     website: (formData.get('website') as string) || null,
     facebook: (formData.get('facebook') as string) || null,
     youtube: (formData.get('youtube') as string) || null,
-    poster_url: (formData.get('poster_url') as string) || null,
+    // Left blank on a brand-new event → falls back to the branded
+    // placeholder instead of no image at all, same as Admin → Events.
+    // Editing an existing event and clearing this field keeps it cleared
+    // — the fallback only applies to new records.
+    poster_url: posterUrlInput || (id ? null : '/event-default.jpg'),
     status: (formData.get('status') as string) || 'upcoming',
     // Every editor save — new or edited — requires admin re-approval before
     // it's visible on the public site, even if this event was previously
