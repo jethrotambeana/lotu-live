@@ -78,6 +78,11 @@ export async function approveSubmission(formData: FormData) {
       website: submission.website,
       facebook: submission.facebook,
       youtube: submission.youtube,
+      // The public church submission form has no logo field at all, so
+      // this was previously left completely blank on every approved
+      // church — same branded placeholder Admin → Add Church already
+      // defaults new entries to.
+      logo_url: '/church-default.jpg',
     })
     .select('id, slug')
     .single();
@@ -156,7 +161,11 @@ export async function approveEventSubmission(formData: FormData) {
     website: submission.website,
     facebook: submission.facebook,
     youtube: submission.youtube,
-    poster_url: submission.poster_url,
+    // Unlike churches/ministries, the public event submission form DOES
+    // have a Poster Image URL field — preserve whatever the submitter
+    // actually provided, and only fall back to the branded placeholder if
+    // they left it blank.
+    poster_url: submission.poster_url || '/event-default.jpg',
     status: 'upcoming',
     approved: true,
   });
@@ -220,6 +229,11 @@ export async function approveMinistrySubmission(formData: FormData) {
       website: submission.website,
       facebook: submission.facebook,
       youtube: submission.youtube,
+      // The public ministry submission form has no logo field at all, so
+      // this was previously left completely blank on every approved
+      // ministry — same branded placeholder Admin → Add Ministry already
+      // defaults new entries to.
+      logo_url: '/ministry-default.jpg',
     })
     .select('id, slug')
     .single();
