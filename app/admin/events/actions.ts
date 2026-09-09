@@ -16,6 +16,8 @@ export async function saveEvent(formData: FormData) {
   const id = formData.get('id') as string | null;
   const supabase = createClient();
 
+  const posterUrlInput = (formData.get('poster_url') as string) || null;
+
   const record = {
     name: formData.get('name') as string,
     slug: (formData.get('slug') as string) || slugify(formData.get('name') as string),
@@ -36,7 +38,11 @@ export async function saveEvent(formData: FormData) {
     website: (formData.get('website') as string) || null,
     facebook: (formData.get('facebook') as string) || null,
     youtube: (formData.get('youtube') as string) || null,
-    poster_url: (formData.get('poster_url') as string) || null,
+    // Left blank on a brand-new event → falls back to the branded
+    // placeholder instead of no image at all. Editing an existing event
+    // and clearing this field keeps it cleared — the fallback only
+    // applies to new records.
+    poster_url: posterUrlInput || (id ? null : '/event-default.jpg'),
     status: (formData.get('status') as string) || 'upcoming',
     approved: formData.get('approved') === 'on',
   };
@@ -56,11 +62,6 @@ export async function deleteEvent(formData: FormData) {
   const id = formData.get('id') as string;
   const supabase = createClient();
 
-  // events is referenced by livestreams.event_id and videos.event_id with
-  // no ON DELETE cascade, so Postgres blocks the delete outright if either
-  // still points at it. Check first and give a specific, actionable
-  // message rather than a raw FK-violation error — or worse, silently
-  // doing nothing (see the same fix already applied to deleteChurch).
   const [{ count: livestreamCount }, { count: videoCount }] = await Promise.all([
     supabase.from('livestreams').select('id', { count: 'exact', head: true }).eq('event_id', id),
     supabase.from('videos').select('id', { count: 'exact', head: true }).eq('event_id', id),
@@ -74,9 +75,6 @@ export async function deleteEvent(formData: FormData) {
     const message = `Can't delete this event — it still has ${blockers.join(
       ', '
     )} linked to it. Unlink or delete those first (edit each one and clear its Event field, or delete it under Admin → Livestreams / Admin → Videos).`;
-    // redirect() (unlike throw new Error()) is NOT swallowed by Next's
-    // production error handling — it's how the message actually reaches
-    // the admin instead of a generic "Application error" page.
     redirect(`/admin/events?error=${encodeURIComponent(message)}`);
   }
 

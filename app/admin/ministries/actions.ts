@@ -17,12 +17,18 @@ export async function saveMinistry(formData: FormData) {
   const id = formData.get('id') as string | null;
   const supabase = createClient();
 
+  const logoUrlInput = (formData.get('logo_url') as string) || null;
+
   const record = {
     name: formData.get('name') as string,
     slug: (formData.get('slug') as string) || slugify(formData.get('name') as string),
     type: (formData.get('type') as string) || 'other',
     church_id: (formData.get('church_id') as string) || null,
-    logo_url: (formData.get('logo_url') as string) || null,
+    // Left blank on a brand-new ministry → falls back to the branded
+    // placeholder instead of no image at all. Editing an existing ministry
+    // and clearing this field keeps it cleared — the fallback only applies
+    // to new records.
+    logo_url: logoUrlInput || (id ? null : '/ministry-default.jpg'),
     country_id: (formData.get('country_id') as string) || null,
     island_province: (formData.get('island_province') as string) || null,
     town: (formData.get('town') as string) || null,
@@ -55,14 +61,6 @@ export async function saveMinistry(formData: FormData) {
   redirect('/admin/ministries');
 }
 
-// Quick Active/Inactive toggle from the list page — same one-click pattern
-// as the Livestreams Show/Hide toggle and the churches list. Deliberately
-// a separate column from `approved` (which governs the original
-// submission-review gate and isn't touched here). Setting active = false
-// immediately hides the ministry, and (via the cascading RLS policies) its
-// events, videos, and livestreams too, without touching any of their own
-// approved/visible flags — flipping active back on restores everything
-// exactly as it was.
 export async function toggleMinistryActive(formData: FormData) {
   const id = formData.get('id') as string;
   const active = formData.get('active') === 'true';
@@ -83,9 +81,6 @@ export async function deleteMinistry(formData: FormData) {
   const id = formData.get('id') as string;
   const supabase = createClient();
 
-  // Same dependent-record check pattern as deleteChurch — ministries is
-  // referenced by videos.ministry_id, events.host_ministry_id, and
-  // profiles.ministry_id with no cascade.
   const [{ count: videoCount }, { count: eventCount }, { count: editorCount }] = await Promise.all([
     supabase.from('videos').select('id', { count: 'exact', head: true }).eq('ministry_id', id),
     supabase.from('events').select('id', { count: 'exact', head: true }).eq('host_ministry_id', id),
@@ -133,9 +128,6 @@ export async function unlinkMinistryEditors(formData: FormData) {
   redirect('/admin/ministries');
 }
 
-// Same unlink as above, but reachable directly from the ministry's own edit
-// page (not just the delete-blocked banner) and redirects back there — the
-// normal path for routine staff turnover, not just cleanup before a delete.
 export async function unlinkMinistryEditorFromEdit(formData: FormData) {
   const profileId = formData.get('profileId') as string;
   const ministryId = formData.get('ministryId') as string;
@@ -157,11 +149,6 @@ export async function unlinkMinistryEditorFromEdit(formData: FormData) {
   redirect(`/admin/ministries/edit?id=${ministryId}`);
 }
 
-// Directly grants editor access to an existing account by email — the UI
-// equivalent of the manual SQL update documented in the Admin Guide. Skips
-// the pending_editor step entirely, since the admin typing this email in
-// and clicking the button IS the deliberate confirmation that activation
-// would otherwise require.
 export async function grantMinistryEditor(formData: FormData) {
   const ministryId = formData.get('ministryId') as string;
   const email = (formData.get('email') as string)?.trim();

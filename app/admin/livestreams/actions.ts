@@ -45,7 +45,12 @@ export async function saveLivestream(formData: FormData) {
   const supabase = createClient();
 
   const manualPreviewImage = (formData.get('preview_image') as string) || null;
-  const previewImage = manualPreviewImage || deriveLivestreamThumbnail(provider, providerStreamId);
+  const derivedPreviewImage = deriveLivestreamThumbnail(provider, providerStreamId);
+  // Priority: what the admin typed > auto-derived from a YouTube/Cloudflare
+  // ID > branded placeholder (new records only) > nothing. The placeholder
+  // deliberately sits below auto-derivation so a real thumbnail is never
+  // shadowed by the generic default just because the field was left blank.
+  const previewImage = manualPreviewImage || derivedPreviewImage || (id ? null : '/livestream-default.jpg');
 
   const record = {
     name: formData.get('name') as string,

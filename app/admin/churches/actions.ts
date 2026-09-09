@@ -17,10 +17,16 @@ export async function saveChurch(formData: FormData) {
   const id = formData.get('id') as string | null;
   const supabase = createClient();
 
+  const logoUrlInput = (formData.get('logo_url') as string) || null;
+
   const record = {
     name: formData.get('name') as string,
     slug: (formData.get('slug') as string) || slugify(formData.get('name') as string),
-    logo_url: (formData.get('logo_url') as string) || null,
+    // Left blank on a brand-new church → falls back to the branded
+    // placeholder instead of no image at all. Editing an existing church
+    // and clearing this field keeps it cleared (null), in case that's
+    // ever intentional — the fallback only applies to new records.
+    logo_url: logoUrlInput || (id ? null : '/church-default.jpg'),
     country_id: (formData.get('country_id') as string) || null,
     island_province: (formData.get('island_province') as string) || null,
     town: (formData.get('town') as string) || null,
@@ -54,12 +60,6 @@ export async function saveChurch(formData: FormData) {
   redirect('/admin/churches');
 }
 
-// Quick Active/Inactive toggle from the list page — same one-click pattern
-// as the Livestreams Show/Hide toggle. Setting active = false immediately
-// hides the church, and (via the cascading RLS policies) its events,
-// videos, and livestreams too, without touching any of their own
-// approved/visible flags — flipping active back on restores everything
-// exactly as it was.
 export async function toggleChurchActive(formData: FormData) {
   const id = formData.get('id') as string;
   const active = formData.get('active') === 'true';
@@ -80,11 +80,6 @@ export async function deleteChurch(formData: FormData) {
   const id = formData.get('id') as string;
   const supabase = createClient();
 
-  // Churches are referenced by livestreams, events, videos, and profiles
-  // (an editor's church_id) with no ON DELETE cascade, so Postgres blocks
-  // the delete outright if any of these still point at it. Check first
-  // and give a specific, actionable message rather than a raw FK-violation
-  // error — or worse, silently doing nothing.
   const [{ count: livestreamCount }, { count: eventCount }, { count: videoCount }, { count: editorCount }] =
     await Promise.all([
       supabase.from('livestreams').select('id', { count: 'exact', head: true }).eq('church_id', id),
@@ -105,9 +100,6 @@ export async function deleteChurch(formData: FormData) {
     )} attached. Delete/reassign the livestreams, events, and videos first.${
       editorCount ? ' You can unlink the editor account below.' : ''
     }`;
-    // redirect() (unlike throw new Error()) is NOT swallowed by Next's
-    // production error handling — it's how the message actually reaches
-    // the admin instead of a generic "Application error" page.
     redirect(`/admin/churches?error=${encodeURIComponent(message)}&blockedId=${id}`);
   }
 
@@ -138,10 +130,6 @@ export async function unlinkChurchEditors(formData: FormData) {
   redirect('/admin/churches');
 }
 
-// Same unlink as above, but reachable directly from the church's own edit
-// page (not just the delete-blocked banner) and redirects back there — this
-// is the normal path for routine staff turnover, not just cleanup before
-// a delete.
 export async function unlinkChurchEditorFromEdit(formData: FormData) {
   const profileId = formData.get('profileId') as string;
   const churchId = formData.get('churchId') as string;
@@ -163,11 +151,6 @@ export async function unlinkChurchEditorFromEdit(formData: FormData) {
   redirect(`/admin/churches/edit?id=${churchId}`);
 }
 
-// Directly grants editor access to an existing account by email — the
-// UI equivalent of the manual SQL update documented in the Admin Guide.
-// Skips the pending_editor step entirely, since the admin typing this
-// email in and clicking the button IS the deliberate confirmation that
-// activation would otherwise require.
 export async function grantChurchEditor(formData: FormData) {
   const churchId = formData.get('churchId') as string;
   const email = (formData.get('email') as string)?.trim();
