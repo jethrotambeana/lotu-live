@@ -42,6 +42,13 @@ export default async function AdminLivestreamsPage() {
                 <input type="hidden" name="visible" value={String(s.visible)} />
                 <button className="text-sm underline">{s.visible ? 'Hide' : 'Show'}</button>
               </form>
+              <Link
+                href={`/admin/videos/edit?fromLivestream=${s.id}`}
+                className="text-sm text-sky-600 underline"
+                title="Pre-fill a new Video from this livestream's details — you'll review and confirm before it's saved"
+              >
+                Convert to Video
+              </Link>
               <Link href={`/admin/livestreams/edit?id=${s.id}`} className="text-sm text-sky-600 underline">
                 Edit
               </Link>

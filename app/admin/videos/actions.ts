@@ -60,19 +60,24 @@ export async function saveVideo(formData: FormData) {
     // cloudinary: no auto-derivation yet — leave null, admin pastes manually.
   }
 
-  const episodeNumberRaw = formData.get('episode_number') as string;
-
   const record = {
     title,
     slug: (formData.get('slug') as string) || slugify(title),
     church_id: (formData.get('church_id') as string) || null,
+    // Was missing entirely before — the videos table and every public page
+    // (church/[slug], ministry/[slug], /videos filter) already fully
+    // support ministry-linked videos; this form just never exposed a way
+    // to set it. A video should normally only have one of church_id/
+    // ministry_id set, not both — not enforced at the DB level the way
+    // profiles.church_id/ministry_id is, so this relies on admin judgment
+    // rather than a hard constraint.
+    ministry_id: (formData.get('ministry_id') as string) || null,
     event_id: (formData.get('event_id') as string) || null,
     speaker: (formData.get('speaker') as string) || null,
-    // `series` (free text) is deprecated in favor of series_id — no longer
-    // written here. The column is left in the database, untouched, purely
-    // as a historical record; see sql/2026-09-07_series_feature.sql.
     series_id: (formData.get('series_id') as string) || null,
-    episode_number: episodeNumberRaw && episodeNumberRaw.trim() !== '' ? parseInt(episodeNumberRaw, 10) : null,
+    episode_number: formData.get('episode_number')
+      ? parseInt(formData.get('episode_number') as string, 10)
+      : null,
     provider,
     provider_video_id: providerVideoId,
     thumbnail,

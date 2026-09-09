@@ -2,14 +2,20 @@ import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
 import { saveVideo } from '../actions';
 
-export default async function VideoFormPage({ searchParams }: { searchParams: { id?: string } }) {
+export default async function VideoFormPage({
+  searchParams,
+}: {
+  searchParams: { id?: string; fromLivestream?: string };
+}) {
   const supabase = createClient();
-  const [{ data: churches }, { data: events }, { data: categories }, { data: seriesList }] = await Promise.all([
-    supabase.from('churches').select('id, name').order('name'),
-    supabase.from('events').select('id, name').order('name'),
-    supabase.from('categories').select('id, name').order('name'),
-    supabase.from('series').select('id, name').order('name'),
-  ]);
+  const [{ data: churches }, { data: ministries }, { data: events }, { data: categories }, { data: seriesList }] =
+    await Promise.all([
+      supabase.from('churches').select('id, name').order('name'),
+      supabase.from('ministries').select('id, name').order('name'),
+      supabase.from('events').select('id, name').order('name'),
+      supabase.from('categories').select('id, name').order('name'),
+      supabase.from('series').select('id, name').order('name'),
+    ]);
 
   let video: any = null;
   let selectedCategoryIds: string[] = [];
@@ -25,20 +31,72 @@ export default async function VideoFormPage({ searchParams }: { searchParams: { 
     selectedCategoryIds = (links ?? []).map((l: any) => l.category_id);
   }
 
+  // Arriving from Admin → Livestreams' "Convert to Video" link: pre-fill a
+  // brand-new video's defaults from that livestream, rather than starting
+  // blank. Only applies when adding (no existing video `id`) — this is a
+  // one-time pre-fill, not a permanent link between the two records.
+  let fromStream: any = null;
+  if (!searchParams.id && searchParams.fromLivestream) {
+    const { data } = await supabase
+      .from('livestreams')
+      .select('*')
+      .eq('id', searchParams.fromLivestream)
+      .single();
+    fromStream = data;
+  }
+
+  const defaults = video ?? {
+    title: fromStream?.name ?? '',
+    church_id: fromStream?.church_id ?? '',
+    ministry_id: fromStream?.ministry_id ?? '',
+    event_id: fromStream?.event_id ?? '',
+    provider: fromStream?.provider === 'facebook' || fromStream?.provider === 'hls' ? '' : fromStream?.provider ?? '',
+    provider_video_id: fromStream?.provider_stream_id ?? '',
+    thumbnail: fromStream?.preview_image ?? '',
+    language: fromStream?.language ?? '',
+  };
+
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold">{video ? 'Edit Video' : 'Add Video'}</h1>
+      <h1 className="mb-2 text-2xl font-bold">{video ? 'Edit Video' : 'Add Video'}</h1>
+
+      {fromStream && (
+        <div className="mb-6 max-w-xl rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <p>
+            Pre-filled from the livestream <strong>{fromStream.name}</strong>. Review everything below
+            before saving — nothing is created until you click "Create Video."
+          </p>
+          {fromStream.provider === 'cloudflare' && (
+            <p className="mt-2">
+              <strong>Cloudflare note:</strong> the Provider Video ID below is that stream's Live
+              Input ID, not necessarily its finished recording's own ID — pasting it as-is may not
+              play the right thing. Cloudflare recordings are normally imported automatically once a
+              stream ends (see the automatic import feature); use this form to correct the ID to the
+              actual recording's UID from your Cloudflare dashboard if you're doing this manually.
+            </p>
+          )}
+          {(fromStream.provider === 'facebook' || fromStream.provider === 'hls') && (
+            <p className="mt-2">
+              <strong>Note:</strong> {fromStream.provider === 'facebook' ? 'Facebook' : 'HLS'} isn't a
+              valid Video provider — Provider has been left blank below; pick Cloudflare, YouTube, or
+              Cloudinary and paste the correct recording ID/URL for that platform if one exists
+              separately from the live stream.
+            </p>
+          )}
+        </div>
+      )}
+
       <form action={saveVideo} className="max-w-xl space-y-4">
         {video && <input type="hidden" name="id" value={video.id} />}
 
-        <Field label="Title" name="title" defaultValue={video?.title} required />
+        <Field label="Title" name="title" defaultValue={defaults.title} required />
         <Field label="Slug (leave blank to auto-generate)" name="slug" defaultValue={video?.slug} />
 
         <div>
           <label className="mb-1 block text-sm font-medium">Church (if applicable)</label>
           <select
             name="church_id"
-            defaultValue={video?.church_id ?? ''}
+            defaultValue={defaults.church_id ?? ''}
             className="w-full rounded border border-slate-300 p-2"
           >
             <option value="">— None —</option>
@@ -51,10 +109,27 @@ export default async function VideoFormPage({ searchParams }: { searchParams: { 
         </div>
 
         <div>
+          <label className="mb-1 block text-sm font-medium">Ministry (if applicable)</label>
+          <select
+            name="ministry_id"
+            defaultValue={defaults.ministry_id ?? ''}
+            className="w-full rounded border border-slate-300 p-2"
+          >
+            <option value="">— None —</option>
+            {(ministries ?? []).map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-500">A video should normally belong to a Church OR a Ministry, not both.</p>
+        </div>
+
+        <div>
           <label className="mb-1 block text-sm font-medium">Event (if applicable)</label>
           <select
             name="event_id"
-            defaultValue={video?.event_id ?? ''}
+            defaultValue={defaults.event_id ?? ''}
             className="w-full rounded border border-slate-300 p-2"
           >
             <option value="">— None —</option>
@@ -111,7 +186,7 @@ export default async function VideoFormPage({ searchParams }: { searchParams: { 
           <label className="mb-1 block text-sm font-medium">Provider</label>
           <select
             name="provider"
-            defaultValue={video?.provider ?? 'youtube'}
+            defaultValue={defaults.provider || 'youtube'}
             className="w-full rounded border border-slate-300 p-2"
           >
             <option value="cloudflare">Cloudflare Stream</option>
@@ -123,17 +198,17 @@ export default async function VideoFormPage({ searchParams }: { searchParams: { 
         <Field
           label="Provider Video ID / URL"
           name="provider_video_id"
-          defaultValue={video?.provider_video_id}
+          defaultValue={defaults.provider_video_id}
           required
           placeholder="e.g. YouTube video ID, Cloudflare video UID, or Cloudinary public ID"
         />
 
         <Field
-          label="Thumbnail URL (auto-filled for YouTube and Cloudflare Stream if left blank — paste manually for Cloudinary or Cloudflare Images)"
+          label="Thumbnail URL (auto-filled for YouTube and Cloudflare Stream if left blank — paste manually for Cloudinary)"
           name="thumbnail"
-          defaultValue={video?.thumbnail}
+          defaultValue={defaults.thumbnail}
         />
-        <Field label="Language" name="language" defaultValue={video?.language} />
+        <Field label="Language" name="language" defaultValue={defaults.language} />
 
         <div>
           <label className="mb-1 block text-sm font-medium">Recorded Date</label>
