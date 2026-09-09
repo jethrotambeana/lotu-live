@@ -6,13 +6,20 @@
 // equivalent to Cloudflare's lifecycle endpoint, and YouTube auto-detection
 // was deliberately left for a later pass — both remain fully manual.
 //
-// NEW: the moment a Cloudflare stream is detected going live -> offline,
-// this also checks for that broadcast's finished recording and
-// auto-creates a Video entry from it. Cloudflare's Live Input automatic
-// recording (recording.mode) turns every session into a normal,
-// standalone Stream video once it's ready — playable through the exact
-// same embed/thumbnail mechanism already used for every other Cloudflare
-// video in this app, so no new player logic is needed, just a new row.
+// The moment a Cloudflare stream is detected going live -> offline, this
+// also checks for that broadcast's finished recording and auto-creates a
+// Video entry from it — approved immediately, going straight to the public
+// site with no review step. This is deliberate: since the underlying
+// livestream itself was already fully set up by an admin (provider,
+// credentials, church/ministry/event linkage), the resulting recording is
+// treated as trusted content, unlike a video added through any OTHER path
+// (the admin/editor video forms, YouTube, Cloudinary, etc.), which keeps
+// its own existing approval rules untouched by this file. Cloudflare's
+// Live Input automatic recording (recording.mode) turns every session
+// into a normal, standalone Stream video once it's ready — playable
+// through the exact same embed/thumbnail mechanism already used for every
+// other Cloudflare video in this app, so no new player logic is needed,
+// just a new row.
 //
 // Requires two environment variables not previously used anywhere else in
 // this project (the public lifecycle endpoint above needs neither of
@@ -21,10 +28,12 @@
 //   CLOUDFLARE_ACCOUNT_ID   Cloudflare dashboard -> Overview page,
 //                           "Account ID" in the right sidebar
 //   CLOUDFLARE_API_TOKEN    Cloudflare dashboard -> My Profile -> API
-//                           Tokens -> Create Token -> a custom token with
-//                           Account > Stream > READ only (this feature
-//                           never writes to Cloudflare, so Read is the
-//                           correct minimum scope — don't grant Edit)
+//                           Tokens -> a custom token with Account >
+//                           Stream > EDIT (Edit, not just Read — Edit is
+//                           also required separately for the
+//                           delete-from-Cloudflare feature in
+//                           lib/cloudflareStream.ts, which shares this
+//                           same token)
 // If either is missing, the import step is silently skipped and the
 // existing live/offline detection above keeps working exactly as before —
 // this is additive, never a required dependency for the core function.
@@ -136,11 +145,9 @@ async function importFinishedRecordings(supabase: SupabaseClient<any>, stream: S
       thumbnail: rec.thumbnail || deriveCloudflareThumbnail(rec.uid),
       language: stream.language,
       recorded_date: rec.created ? rec.created.slice(0, 10) : null,
-      // Reviewed before publishing, same as everything else that isn't
-      // hand-created directly by an admin — confirms the title reads
-      // well, the auto-thumbnail isn't an awkward frame, and it's
-      // actually worth publishing before it goes public.
-      approved: false,
+      // Goes straight to the public site — see the top-of-file comment
+      // for why this differs from every other video-creation path.
+      approved: true,
     });
 
     if (insertError) {
