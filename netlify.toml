@@ -19,3 +19,8 @@
 # work from a different island/timezone.
 [functions."pending-digest"]
   schedule = "0 20 * * *"
+
+# 04:00 UTC — off-peak, separate from both jobs above so all three don't
+# ever compete for the same run slot.
+[functions."sync-cloudflare-videos"]
+  schedule = "0 4 * * *"
