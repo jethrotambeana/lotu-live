@@ -34,12 +34,10 @@
 // finishes processing a recording well within the ~15-minute check
 // interval for a typical service-length stream, but a very long broadcast
 // could still be processing at that instant, in which case it won't be
-// auto-imported. The "Convert to Video" manual action (if/when built) is
-// the intended fallback for that case — not handled here, to keep this
-// function's Cloudflare API usage bounded and predictable rather than
-// re-querying every offline stream on every single run indefinitely.
+// auto-imported. The "Convert to Video" manual action in Admin ->
+// Livestreams is the intended fallback for that case.
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -94,7 +92,13 @@ interface StreamRow {
 // and swallowed, never allowed to affect the live/offline status check,
 // which is this function's primary job and must keep working even if
 // this secondary feature's credentials are missing, wrong, or rate-limited.
-async function importFinishedRecordings(supabase: ReturnType<typeof createClient>, stream: StreamRow) {
+//
+// `SupabaseClient<any>` (not the bare inferred type) is deliberate — this
+// project has no generated Database type, and without an explicit `any`
+// here, `.insert()` on an untyped client resolves its expected argument
+// type to `never[]` and fails the build with a TypeScript error, even
+// though the actual object being inserted is perfectly valid at runtime.
+async function importFinishedRecordings(supabase: SupabaseClient<any>, stream: StreamRow) {
   if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) return; // feature not configured — skip silently
 
   const inputId = extractCloudflareId(stream.provider_stream_id);
@@ -153,7 +157,7 @@ export async function handler() {
     return { statusCode: 500, body: 'Missing environment variables' };
   }
 
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  const supabase = createClient<any>(SUPABASE_URL, SERVICE_ROLE_KEY);
 
   const { data: streams, error } = await supabase
     .from('livestreams')
