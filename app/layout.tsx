@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: [{ url: '/og-default.jpg', width: 1200, height: 630 }],
+    images: [{ url: '/hero-banner.jpg', width: 2046, height: 768 }],
     type: 'website',
     siteName: 'LOTU.LIVE',
   },
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: ['/og-default.jpg'],
+    images: ['/hero-banner.jpg'],
   },
 };
 
@@ -47,17 +47,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="relative border-b border-slate-200">
           <nav className="mx-auto flex max-w-6xl items-center justify-between p-4">
             <Link href="/" className="flex items-center">
-              {/* "?v=2" cache-busts Next's image optimizer, which caches
+              {/* "?v=3" cache-busts Next's image optimizer, which caches
                   transformed images by URL rather than content and does not
-                  invalidate that cache on redeploy. If logo-header.png is
-                  ever replaced again, bump this to "?v=3" (etc.) or the old
-                  image may keep being served regardless of what's actually
-                  in the file. */}
+                  invalidate that cache on redeploy. New artwork (2026-09-09)
+                  is a different aspect ratio (1.5, was 1.626) than the
+                  previous file — width/height updated to match, since a
+                  mismatch between these props and the file's real ratio
+                  causes the browser to stretch/squash it under the
+                  h-14 w-auto CSS below. If logo-header.png is ever replaced
+                  again, bump this to "?v=4" (etc.) or the old image may
+                  keep being served regardless of what's actually in the
+                  file. */}
               <Image
-                src="/logo-header.png?v=2"
+                src="/logo-header.png?v=3"
                 alt="LOTU.LIVE"
                 width={600}
-                height={369}
+                height={400}
                 priority
                 className="h-14 w-auto"
               />
@@ -76,7 +81,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </header>
         <main>{children}</main>
         <footer className="mt-12 bg-black py-10 text-center">
-          {/* Same cache-bust as the header logo above — see that comment. */}
+          {/* Untouched — this is a deliberately different white-on-black
+              recolor, not the same artwork with transparency, and stays
+              as-is. */}
           <Image
             src="/logo-footer.png?v=2"
             alt="LOTU.LIVE — Worship Together. Wherever You Are."

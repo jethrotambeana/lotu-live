@@ -27,15 +27,17 @@ export default async function HomePage() {
       {/* Hero — the banner already carries the wordmark, tagline, country
           list, and feature callouts. Two separate images: mobile-specific
           hero-banner-mobile.jpg (1448x1086, 4:3) below the `sm` breakpoint,
-          and the original hero-banner.jpg (2046:768) at `sm` and above.
-          Each carries a very slow, subtle zoom (animate-slow-zoom) for
-          ambient motion — `overflow-hidden` on the wrapper is required
-          since the zoom exceeds the element's own bounds.
-          NOTE: "?v=2" cache-busts Next's image optimizer, which caches
+          and hero-banner.jpg (2046:768) at `sm` and above. Each carries a
+          very slow, subtle zoom (animate-slow-zoom) for ambient motion —
+          `overflow-hidden` on the wrapper is required since the zoom
+          exceeds the element's own bounds.
+          NOTE: "?v=3" cache-busts Next's image optimizer, which caches
           transformed images by URL rather than content and does not
-          invalidate that cache on redeploy. If hero-banner.jpg is ever
-          replaced again, bump this to "?v=3" (etc.) or the old image may
-          keep being served. */}
+          invalidate that cache on redeploy. New artwork was swapped in on
+          2026-09-09 (same 2046x768 dimensions as before). If hero-banner.jpg
+          is ever replaced again, bump this to "?v=4" (etc.) or the old
+          image may keep being served. hero-banner-mobile.jpg was NOT part
+          of that update and keeps no version query. */}
       <section>
         <h1 className="sr-only">LOTU.LIVE — Worship Together. Wherever You Are.</h1>
         <div className="relative aspect-[1448/1086] w-full overflow-hidden sm:hidden">
@@ -50,7 +52,7 @@ export default async function HomePage() {
         </div>
         <div className="relative hidden aspect-[2046/768] w-full overflow-hidden sm:block">
           <Image
-            src="/hero-banner.jpg?v=2"
+            src="/hero-banner.jpg?v=3"
             alt="LOTU.LIVE — Worship Together. Wherever You Are. Live streams, inspiring messages, and church services across Vanuatu, Solomon Islands, Papua New Guinea, Fiji and beyond."
             fill
             priority

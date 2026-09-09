@@ -36,8 +36,6 @@ function sortStreams<T extends { status: string; name: string; start_at?: string
   return streams.slice().sort((a, b) => {
     const rankDiff = (STATUS_RANK[a.status] ?? 3) - (STATUS_RANK[b.status] ?? 3);
     if (rankDiff !== 0) return rankDiff;
-    // Within upcoming/scheduled: soonest first. Within live/offline (no
-    // meaningful time to sort by): alphabetical.
     if ((a.status === 'upcoming' || a.status === 'scheduled') && a.start_at && b.start_at) {
       return new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
     }
@@ -128,14 +126,18 @@ export default async function LiveDirectoryPage({
     );
   }
 
-  // A specific status filter is already a single, homogeneous list — extra
-  // section headers there would be redundant. Only group into sections
-  // when browsing the full mixed "Any Status" view, matching the same
-  // Live Now / Coming Up pattern already used on the homepage.
+  // NOTE: "?v=2" on the mobile banner below cache-busts Next's image
+  // optimizer for the new artwork swapped in on 2026-09-09 — same reason
+  // as the header logo/hero banner above. Bump again if this file is ever
+  // replaced.
+  const banner = (
+    <PageBanner src="/banner-live.jpg" mobileSrc="/banner-live-mobile.jpg?v=2" alt="Watch Live — LOTU.LIVE" />
+  );
+
   if (searchParams.status) {
     return (
       <>
-        <PageBanner src="/banner-live.jpg" mobileSrc="/banner-live-mobile.jpg" alt="Watch Live — LOTU.LIVE" />
+        {banner}
         <div className="mx-auto max-w-6xl px-4 py-8">
           <h1 className="mb-6 text-2xl font-bold">Watch Live</h1>
           {filters}
@@ -151,7 +153,7 @@ export default async function LiveDirectoryPage({
 
   return (
     <>
-      <PageBanner src="/banner-live.jpg" mobileSrc="/banner-live-mobile.jpg" alt="Watch Live — LOTU.LIVE" />
+      {banner}
       <div className="mx-auto max-w-6xl px-4 py-8">
         <h1 className="mb-6 text-2xl font-bold">Watch Live</h1>
         {filters}
