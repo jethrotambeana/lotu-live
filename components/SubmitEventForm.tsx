@@ -58,10 +58,21 @@ export default function SubmitEventForm() {
 
   if (status === 'sent') {
     return (
-      <p className="rounded bg-green-50 p-4 text-green-700">
-        Thanks! Your event has been submitted for review. Once approved, we'll email you when it's
-        live on the events page.
-      </p>
+      <div className="rounded bg-green-50 p-4 text-green-700">
+        <p>
+          Thanks! Your event has been submitted for review. Once approved, we'll email you when it's
+          live on the events page.
+        </p>
+        <p className="mt-3 text-sm">
+          Note: submitting an event doesn't grant editor access to its host church or ministry —
+          that's separate from listing an event. If you'd like to manage a church or ministry's own
+          page (profile, events, videos), contact the site admin after signing up at{' '}
+          <a href="/signup" className="underline">
+            /signup
+          </a>{' '}
+          and ask them to grant you access.
+        </p>
+      </div>
     );
   }
 
