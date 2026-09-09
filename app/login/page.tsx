@@ -29,10 +29,15 @@ export default function LoginPage() {
     }
 
     // Route by role rather than always pushing to /admin — that previously
-    // sent every non-admin (including the new editor role) straight into
+    // sent every non-admin (including the editor role) straight into
     // requireAdmin's redirect-to-homepage fallback, bypassing /manage
     // entirely. "read own profile" RLS lets any signed-in user read their
     // own row here, regardless of role.
+    //
+    // Checks BOTH church_id and ministry_id — a ministry editor has
+    // ministry_id set and church_id null, so checking church_id alone (as
+    // this used to) silently fell through to the homepage for every
+    // ministry editor, while church editors worked fine.
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -41,13 +46,13 @@ export default function LoginPage() {
     if (user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role, church_id')
+        .select('role, church_id, ministry_id')
         .eq('id', user.id)
         .single();
 
       if (profile?.role === 'admin') {
         destination = '/admin';
-      } else if (profile?.role === 'editor' && profile?.church_id) {
+      } else if (profile?.role === 'editor' && (profile?.church_id || profile?.ministry_id)) {
         destination = '/manage';
       }
     }
