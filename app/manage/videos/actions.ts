@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { deriveYouTubeThumbnail, deriveCloudflareThumbnail } from '@/lib/thumbnails';
+import { deleteCloudflareRecording } from '@/lib/cloudflareStream';
 import { requireEditor } from '@/lib/requireEditor';
 
 type VideoProvider = 'cloudflare' | 'youtube' | 'cloudinary';
@@ -102,7 +103,27 @@ export async function deleteMyVideo(formData: FormData) {
   const { supabase, scope } = await requireEditor();
   const videoScopeColumn = scope.type === 'church' ? 'church_id' : 'ministry_id';
   const id = formData.get('id') as string;
+
+  // Fetch provider/provider_video_id first — scoped the same way the
+  // delete itself is, so an editor can only ever trigger a Cloudflare
+  // delete for a video that's genuinely their own, never an arbitrary id.
+  const { data: video } = await supabase
+    .from('videos')
+    .select('provider, provider_video_id')
+    .eq('id', id)
+    .eq(videoScopeColumn, scope.id)
+    .maybeSingle();
+
   await supabase.from('videos').delete().eq('id', id).eq(videoScopeColumn, scope.id);
+
+  // Best-effort, non-blocking — see lib/cloudflareStream.ts. The row above
+  // is already deleted regardless of whether this succeeds. `video` is
+  // null here if the id didn't belong to this editor in the first place,
+  // in which case there's nothing to delete on Cloudflare's side either.
+  if (video?.provider === 'cloudflare' && video.provider_video_id) {
+    await deleteCloudflareRecording(video.provider_video_id);
+  }
+
   revalidatePath('/manage/videos');
   revalidatePath('/videos');
   revalidatePath('/');

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabaseServer';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { deriveYouTubeThumbnail, deriveCloudflareThumbnail } from '@/lib/thumbnails';
+import { deleteCloudflareRecording } from '@/lib/cloudflareStream';
 
 // videos.provider check constraint only allows these three (see sql/schema.sql) —
 // note this is a different set than livestreams' Provider type in lib/embed.ts
@@ -64,13 +65,6 @@ export async function saveVideo(formData: FormData) {
     title,
     slug: (formData.get('slug') as string) || slugify(title),
     church_id: (formData.get('church_id') as string) || null,
-    // Was missing entirely before — the videos table and every public page
-    // (church/[slug], ministry/[slug], /videos filter) already fully
-    // support ministry-linked videos; this form just never exposed a way
-    // to set it. A video should normally only have one of church_id/
-    // ministry_id set, not both — not enforced at the DB level the way
-    // profiles.church_id/ministry_id is, so this relies on admin judgment
-    // rather than a hard constraint.
     ministry_id: (formData.get('ministry_id') as string) || null,
     event_id: (formData.get('event_id') as string) || null,
     speaker: (formData.get('speaker') as string) || null,
@@ -121,8 +115,20 @@ export async function saveVideo(formData: FormData) {
 export async function deleteVideo(formData: FormData) {
   const id = formData.get('id') as string;
   const supabase = createClient();
+
+  // Fetch provider/provider_video_id first — needed to also remove the
+  // underlying Cloudflare recording, not just this app's own row.
+  const { data: video } = await supabase.from('videos').select('provider, provider_video_id').eq('id', id).single();
+
   // video_categories has `on delete cascade` on video_id, so no manual cleanup needed there.
   await supabase.from('videos').delete().eq('id', id);
+
+  // Best-effort, non-blocking — see lib/cloudflareStream.ts. The row above
+  // is already deleted regardless of whether this succeeds.
+  if (video?.provider === 'cloudflare' && video.provider_video_id) {
+    await deleteCloudflareRecording(video.provider_video_id);
+  }
+
   revalidatePath('/admin/videos');
   revalidatePath('/videos');
   revalidatePath('/');
