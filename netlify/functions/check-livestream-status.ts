@@ -6,20 +6,35 @@
 // equivalent to Cloudflare's lifecycle endpoint, and YouTube auto-detection
 // was deliberately left for a later pass — both remain fully manual.
 //
-// The moment a Cloudflare stream is detected going live -> offline, this
-// also checks for that broadcast's finished recording and auto-creates a
-// Video entry from it — approved immediately, going straight to the public
-// site with no review step. This is deliberate: since the underlying
-// livestream itself was already fully set up by an admin (provider,
-// credentials, church/ministry/event linkage), the resulting recording is
-// treated as trusted content, unlike a video added through any OTHER path
-// (the admin/editor video forms, YouTube, Cloudinary, etc.), which keeps
-// its own existing approval rules untouched by this file. Cloudflare's
-// Live Input automatic recording (recording.mode) turns every session
-// into a normal, standalone Stream video once it's ready — playable
-// through the exact same embed/thumbnail mechanism already used for every
-// other Cloudflare video in this app, so no new player logic is needed,
-// just a new row.
+// Whenever a Cloudflare stream is currently offline, this also checks for
+// finished recordings and auto-creates a Video entry from any not already
+// imported — approved immediately, going straight to the public site with
+// no review step. This is deliberate: since the underlying livestream
+// itself was already fully set up by an admin (provider, credentials,
+// church/ministry/event linkage), the resulting recording is treated as
+// trusted content, unlike a video added through any OTHER path (the
+// admin/editor video forms, YouTube, Cloudinary, etc.), which keeps its
+// own existing approval rules untouched by this file. Cloudflare's Live
+// Input automatic recording (recording.mode) turns every session into a
+// normal, standalone Stream video once it's ready — playable through the
+// exact same embed/thumbnail mechanism already used for every other
+// Cloudflare video in this app, so no new player logic is needed, just a
+// new row.
+//
+// IMPORTANT: import is checked on EVERY run for EVERY currently-offline
+// Cloudflare stream, not just the exact moment a stream transitions to
+// offline. Earlier versions of this file only checked on that single
+// transition edge — but a recording that's still processing at that exact
+// instant (Cloudflare's status stays "inprogress" until encoding
+// finishes) would then never be retried, since the code had no memory of
+// "still waiting on this one," only "did the live/offline status just
+// change." Rechecking every run instead makes this self-healing: a slow
+// recording just gets picked up on a later cycle once it's actually
+// ready. The dedup check inside importFinishedRecordings (matching on
+// provider_video_id) makes this safe to call repeatedly — nothing gets
+// imported twice, so the only real cost of checking more often is one
+// extra lightweight Cloudflare API call per offline stream per run,
+// which is trivial at this platform's scale.
 //
 // Requires two environment variables not previously used anywhere else in
 // this project (the public lifecycle endpoint above needs neither of
@@ -37,14 +52,6 @@
 // If either is missing, the import step is silently skipped and the
 // existing live/offline detection above keeps working exactly as before —
 // this is additive, never a required dependency for the core function.
-//
-// KNOWN LIMITATION: import is only attempted at the exact moment a stream
-// transitions to offline, not retried on later checks. Cloudflare usually
-// finishes processing a recording well within the ~15-minute check
-// interval for a typical service-length stream, but a very long broadcast
-// could still be processing at that instant, in which case it won't be
-// auto-imported. The "Convert to Video" manual action in Admin ->
-// Livestreams is the intended fallback for that case.
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
@@ -203,12 +210,15 @@ export async function handler() {
       if (isLive && stream.status !== 'live') {
         await supabase.from('livestreams').update({ status: 'live' }).eq('id', stream.id);
         updated++;
-      } else if (!isLive && stream.status === 'live') {
-        await supabase.from('livestreams').update({ status: 'offline' }).eq('id', stream.id);
-        updated++;
+      } else if (!isLive) {
+        if (stream.status === 'live') {
+          await supabase.from('livestreams').update({ status: 'offline' }).eq('id', stream.id);
+          updated++;
+        }
 
-        // This transition — just went from live to offline — is exactly
-        // the moment a freshly-finished recording becomes available.
+        // Checked every run while offline, not just on the transition
+        // edge — see the top-of-file note on why. Cheap and safe to
+        // repeat thanks to the dedup check inside.
         try {
           await importFinishedRecordings(supabase, stream as StreamRow);
         } catch (importErr) {
