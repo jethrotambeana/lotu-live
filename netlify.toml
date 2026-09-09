@@ -8,8 +8,29 @@
 [build.environment]
   NEXT_TELEMETRY_DISABLED = "1"
 
+# Baseline livestream live/offline detection + Cloudflare recording
+# import/cleanup — every 10 minutes, all week.
 [functions."check-livestream-status"]
-  schedule = "*/15 * * * *"
+  schedule = "*/10 * * * *"
+
+# Saturday-morning peak polling, every 5 minutes. Many churches across
+# Vanuatu/Solomon Islands/PNG/Fiji begin Sabbath services around 8-11am
+# LOCAL time — but those four countries span three different UTC offsets
+# (VU/SB = UTC+11, PG = UTC+10, FJ = UTC+12), so "8-11am local" isn't one
+# single UTC window. Widened to roughly cover all four at once: the
+# combined window works out to Friday 20:00 UTC through Saturday 01:00
+# UTC — which crosses the UTC day-of-week boundary, so it has to be split
+# into two schedule entries (cron can't express "Friday late hours OR
+# Saturday early hours" as a single line without also incorrectly
+# matching Friday early hours and Saturday late hours). Both re-export the
+# exact same handler as check-livestream-status.ts above — see that
+# file's top comment. Overlap with the base 10-minute schedule during this
+# window is expected and harmless; every check is idempotent.
+[functions."check-livestream-status-peak-1"]
+  schedule = "*/5 20-23 * * 5"
+
+[functions."check-livestream-status-peak-2"]
+  schedule = "*/5 0-1 * * 6"
 
 [functions."cleanup-submissions"]
   schedule = "0 3 * * *"
@@ -20,7 +41,7 @@
 [functions."pending-digest"]
   schedule = "0 20 * * *"
 
-# 04:00 UTC — off-peak, separate from both jobs above so all three don't
-# ever compete for the same run slot.
+# 04:00 UTC — off-peak, separate from every other job above so nothing
+# ever competes for the same run slot.
 [functions."sync-cloudflare-videos"]
   schedule = "0 4 * * *"

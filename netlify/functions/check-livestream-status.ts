@@ -1,6 +1,17 @@
-// Runs on a schedule (see netlify.toml) — not part of the Next.js app
+// Runs every 10 minutes (see netlify.toml) — not part of the Next.js app
 // itself, so it uses @supabase/supabase-js directly with the service role
 // key, bypassing RLS (there's no logged-in admin session in a cron job).
+//
+// check-livestream-status-peak-1.ts and check-livestream-status-peak-2.ts
+// are thin wrappers that re-export this exact same handler under two
+// additional scheduled triggers, running every 5 minutes during a
+// Saturday-morning window widened to roughly cover Vanuatu/Solomon
+// Islands/PNG/Fiji's differing local mornings at once — see netlify.toml
+// for the actual UTC math and why it's split into two entries. Running
+// more often during that window is safe: every check here is idempotent
+// (dedup on provider_video_id, and only flips status on a genuine
+// transition), so overlapping with the base 10-minute schedule just means
+// a few redundant checks, never duplicate data.
 //
 // Only handles provider = 'cloudflare'. Facebook and HLS have no reliable
 // equivalent to Cloudflare's lifecycle endpoint, and YouTube auto-detection
