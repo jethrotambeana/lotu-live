@@ -1,15 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabaseClient';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const confirmed = searchParams.get('confirmed');
+  const confirmError = searchParams.get('confirmError');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +60,18 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-sm px-4 py-16">
       <h1 className="mb-6 text-2xl font-bold">Login</h1>
+
+      {confirmed && (
+        <div className="mb-4 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+          Your email is confirmed — you can log in below.
+        </div>
+      )}
+      {confirmError && (
+        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {confirmError}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium">Email</label>
