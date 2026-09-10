@@ -51,6 +51,8 @@ export const viewport: Viewport = {
 const NAV = [
   { href: '/', label: 'Home' },
   { href: '/live', label: 'Watch Live' },
+  { href: '/whats-on', label: "What's On" },
+  { href: '/map', label: 'Map' },
   { href: '/churches', label: 'Churches' },
   { href: '/ministries', label: 'Ministries' },
   { href: '/events', label: 'Events' },

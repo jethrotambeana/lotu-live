@@ -18,6 +18,8 @@ export async function saveChurch(formData: FormData) {
   const supabase = createClient();
 
   const logoUrlInput = (formData.get('logo_url') as string) || null;
+  const latitudeInput = formData.get('latitude') as string;
+  const longitudeInput = formData.get('longitude') as string;
 
   const record = {
     name: formData.get('name') as string,
@@ -39,6 +41,12 @@ export async function saveChurch(formData: FormData) {
     description: (formData.get('description') as string) || null,
     worship_times: (formData.get('worship_times') as string) || null,
     active: formData.get('active') === 'on',
+    // Powers the /map page — optional, looked up manually by the admin
+    // (e.g. via Google Maps "What's here?"), not auto-geocoded. Blank
+    // input becomes null rather than NaN, so the church just doesn't show
+    // a pin yet rather than breaking the map with an invalid value.
+    latitude: latitudeInput ? parseFloat(latitudeInput) : null,
+    longitude: longitudeInput ? parseFloat(longitudeInput) : null,
   };
 
   if (id) {
@@ -57,6 +65,7 @@ export async function saveChurch(formData: FormData) {
 
   revalidatePath('/admin/churches');
   revalidatePath('/churches');
+  revalidatePath('/map');
   redirect('/admin/churches');
 }
 
