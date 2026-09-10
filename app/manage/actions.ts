@@ -7,6 +7,9 @@ import { requireEditor } from '@/lib/requireEditor';
 export async function saveMyChurch(formData: FormData) {
   const { supabase, churchId } = await requireChurchEditor();
 
+  const latitudeInput = formData.get('latitude') as string;
+  const longitudeInput = formData.get('longitude') as string;
+
   const record = {
     name: formData.get('name') as string,
     logo_url: (formData.get('logo_url') as string) || null,
@@ -14,6 +17,12 @@ export async function saveMyChurch(formData: FormData) {
     island_province: (formData.get('island_province') as string) || null,
     town: (formData.get('town') as string) || null,
     address: (formData.get('address') as string) || null,
+    // Powers the /map page — optional, looked up manually by the editor
+    // (e.g. via Google Maps "What's here?"), not auto-geocoded. Blank
+    // input becomes null rather than NaN, so the church just doesn't show
+    // a pin yet rather than breaking the map with an invalid value.
+    latitude: latitudeInput ? parseFloat(latitudeInput) : null,
+    longitude: longitudeInput ? parseFloat(longitudeInput) : null,
     phone: (formData.get('phone') as string) || null,
     email: (formData.get('email') as string) || null,
     website: (formData.get('website') as string) || null,
@@ -40,6 +49,7 @@ export async function saveMyChurch(formData: FormData) {
 
   revalidatePath('/manage');
   revalidatePath('/churches');
+  revalidatePath('/map');
   if (data?.slug) revalidatePath(`/church/${data.slug}`);
 }
 

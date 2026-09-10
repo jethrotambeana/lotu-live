@@ -48,6 +48,26 @@ export default async function ManageProfilePage() {
           <Field label="Island / Province" name="island_province" defaultValue={church?.island_province} />
           <Field label="Town" name="town" defaultValue={church?.town} />
           <Field label="Address" name="address" defaultValue={church?.address} />
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field
+              label="Latitude (optional)"
+              name="latitude"
+              defaultValue={church?.latitude != null ? String(church.latitude) : ''}
+            />
+            <Field
+              label="Longitude (optional)"
+              name="longitude"
+              defaultValue={church?.longitude != null ? String(church.longitude) : ''}
+            />
+          </div>
+          <p className="-mt-2 text-xs text-slate-500">
+            Powers your pin on the <a href="/map" className="underline">Church Map</a>. To find these:
+            open Google Maps, find your church, right-click the exact spot, and click the
+            coordinates that appear (e.g. "-17.7404, 168.3219") to copy them — paste the first
+            number into Latitude and the second into Longitude.
+          </p>
+
           <Field label="Phone" name="phone" defaultValue={church?.phone} />
           <Field label="Email" name="email" defaultValue={church?.email} />
           <Field label="Website" name="website" defaultValue={church?.website} />
@@ -73,7 +93,9 @@ export default async function ManageProfilePage() {
     );
   }
 
-  // Ministry scope
+  // Ministry scope — no coordinate fields here; the map feature is
+  // church-only for now (ministries have no latitude/longitude columns
+  // and aren't shown on /map).
   const { data: ministry } = await supabase.from('ministries').select('*').eq('id', scope.id).single();
 
   return (
