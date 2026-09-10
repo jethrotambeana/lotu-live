@@ -63,6 +63,13 @@
 // If either is missing, the import step is silently skipped and the
 // existing live/offline detection above keeps working exactly as before —
 // this is additive, never a required dependency for the core function.
+//
+// Also sends a "you're followed church just went live" email to every
+// follower on the same live transition, using the existing
+// RESEND_API_KEY/EMAIL_FROM_ADDRESS already set up for every other
+// transactional email in this project — see notifyFollowers below. Same
+// non-blocking philosophy: if RESEND_API_KEY is missing, this is silently
+// skipped.
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
@@ -71,6 +78,80 @@ const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const CLOUDFLARE_CUSTOMER_CODE = process.env.NEXT_PUBLIC_CLOUDFLARE_CUSTOMER_CODE || '';
 const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || '';
 const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN || '';
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const EMAIL_FROM_ADDRESS = process.env.EMAIL_FROM_ADDRESS || 'LOTU.LIVE <noreply@updates.lotu.live>';
+
+// Duplicated from lib/email.ts rather than imported — same reason as
+// extractCloudflareId above: this function is bundled independently of
+// the Next.js app, and reaching into app/lib code isn't reliable across
+// that boundary (pending-digest.ts does the same thing for its own
+// emails).
+async function sendEmail(to: string, subject: string, text: string): Promise<void> {
+  if (!RESEND_API_KEY) return;
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: EMAIL_FROM_ADDRESS, to, subject, text }),
+    });
+    if (!res.ok) {
+      console.error(`sendEmail: Resend API failed for ${to} (HTTP ${res.status}):`, await res.text());
+    }
+  } catch (err) {
+    console.error(`sendEmail: request failed for ${to}:`, err);
+  }
+}
+
+// Emails everyone following this stream's church/ministry that it just
+// went live. Best-effort and non-blocking, same as importFinishedRecordings
+// below — a failure here (missing Resend key, a bad email address, a
+// network hiccup) is logged and swallowed, never allowed to affect the
+// live/offline status check itself.
+//
+// follows.user_id references auth.users(id), not profiles(id) directly,
+// so there's no FK relationship PostgREST can auto-join across those two
+// tables — this deliberately fetches user_id first, then looks up emails
+// from profiles separately, rather than attempting a one-step embedded
+// select that would silently return nothing.
+async function notifyFollowers(supabase: SupabaseClient<any>, stream: StreamRow) {
+  if (!RESEND_API_KEY) return;
+  if (!stream.church_id && !stream.ministry_id) return;
+
+  const filter = stream.church_id ? `church_id.eq.${stream.church_id}` : `ministry_id.eq.${stream.ministry_id}`;
+  const { data: followRows, error: followError } = await supabase.from('follows').select('user_id').or(filter);
+
+  if (followError) {
+    console.error(`notifyFollowers: failed to fetch followers for stream ${stream.id}:`, followError);
+    return;
+  }
+  const userIds = (followRows ?? []).map((f: any) => f.user_id);
+  if (userIds.length === 0) return;
+
+  const { data: profiles, error: profileError } = await supabase
+    .from('profiles')
+    .select('email')
+    .in('id', userIds);
+
+  if (profileError) {
+    console.error(`notifyFollowers: failed to fetch follower emails for stream ${stream.id}:`, profileError);
+    return;
+  }
+
+  const emails = (profiles ?? []).map((p: any) => p.email).filter(Boolean);
+  if (emails.length === 0) return;
+
+  const subject = `${stream.name} is live now on LOTU.LIVE`;
+  const text = `Good news — ${stream.name} just went live.
+
+Watch now: https://lotu.live/watch/${stream.slug}
+
+You're receiving this because you follow ${stream.name} on LOTU.LIVE. Manage what you follow anytime at https://lotu.live/following
+
+— The LOTU.LIVE Team`;
+
+  await Promise.all(emails.map((email: string) => sendEmail(email, subject, text)));
+  console.log(`notifyFollowers: emailed ${emails.length} follower(s) for stream ${stream.id}.`);
+}
 
 // Mirrors lib/embed.ts's extractCloudflareId. Duplicated (not imported)
 // because this function is bundled independently of the Next.js app by
@@ -107,6 +188,7 @@ function formatSessionTitle(streamName: string, isoDate: string | undefined): st
 interface StreamRow {
   id: string;
   name: string;
+  slug: string;
   provider_stream_id: string;
   church_id: string | null;
   ministry_id: string | null;
@@ -186,7 +268,7 @@ export async function handler() {
 
   const { data: streams, error } = await supabase
     .from('livestreams')
-    .select('id, name, provider_stream_id, status, church_id, ministry_id, event_id, language')
+    .select('id, name, slug, provider_stream_id, status, church_id, ministry_id, event_id, language')
     .eq('provider', 'cloudflare');
 
   if (error) {
@@ -224,6 +306,12 @@ export async function handler() {
           .update({ status: 'live', last_live_at: new Date().toISOString() })
           .eq('id', stream.id);
         updated++;
+
+        try {
+          await notifyFollowers(supabase, stream as StreamRow);
+        } catch (notifyErr) {
+          console.error(`check-livestream-status: follower notification failed for ${stream.id}:`, notifyErr);
+        }
       } else if (!isLive) {
         if (stream.status === 'live') {
           await supabase.from('livestreams').update({ status: 'offline' }).eq('id', stream.id);
