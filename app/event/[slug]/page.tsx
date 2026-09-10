@@ -8,6 +8,7 @@ import LiveCard from '@/components/LiveCard';
 import VideoCard from '@/components/VideoCard';
 import ShareButton from '@/components/ShareButton';
 import SocialLinks from '@/components/SocialLinks';
+import QRCodeImage from '@/components/QRCode';
 
 const getEvent = cache(async (slug: string) => {
   const supabase = createClient();
@@ -116,6 +117,17 @@ export default async function EventPage({ params }: { params: { slug: string } }
       </div>
 
       {event.description && <p className="mt-4 text-slate-700">{event.description}</p>}
+
+      <div className="mt-6 flex items-center gap-3 rounded border border-slate-200 bg-slate-50 p-4">
+        <QRCodeImage
+          value={`https://lotu.live/event/${event.slug}`}
+          size={120}
+          downloadName={`${event.slug}-qr.png`}
+        />
+        <p className="text-sm text-slate-600">
+          Scan to open this event page on a phone — handy for flyers, bulletins, or a projector slide.
+        </p>
+      </div>
 
       {liveStreams && liveStreams.length > 0 && (
         <section className="mt-8">

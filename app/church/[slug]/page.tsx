@@ -6,147 +6,134 @@ import Image from 'next/image';
 import Link from 'next/link';
 import LiveCard from '@/components/LiveCard';
 import VideoCard from '@/components/VideoCard';
-import EventCard from '@/components/EventCard';
 import ShareButton from '@/components/ShareButton';
 import SocialLinks from '@/components/SocialLinks';
-import FollowButton from '@/components/FollowButton';
-import { getScheduleText } from '@/lib/schedule';
+import QRCodeImage from '@/components/QRCode';
 
-const getChurch = cache(async (slug: string) => {
+const getEvent = cache(async (slug: string) => {
   const supabase = createClient();
-  const { data } = await supabase.from('churches').select('*, countries(name)').eq('slug', slug).single();
+  const { data } = await supabase
+    .from('events')
+    .select('*, countries(name), churches(name, slug), ministries(name, slug)')
+    .eq('slug', slug)
+    .single();
   return data;
 });
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const church = await getChurch(params.slug);
-  if (!church) return {};
+  const event = await getEvent(params.slug);
+  if (!event) return {};
 
-  const location = [church.town, church.island_province, church.countries?.name].filter(Boolean).join(', ');
-  const description = church.description || [`${church.name}`, location].filter(Boolean).join(' — ');
-  const image = church.logo_url || '/og-default.jpg';
+  const location = [event.venue, event.town, event.countries?.name].filter(Boolean).join(', ');
+  const description = event.description || [event.start_date, location].filter(Boolean).join(' · ') || `${event.name} on LOTU.LIVE.`;
+  const image = event.poster_url || '/og-default.jpg';
 
   return {
-    title: `${church.name} — LOTU.LIVE`,
+    title: `${event.name} — LOTU.LIVE`,
     description,
     openGraph: {
-      title: church.name,
+      title: event.name,
       description,
-      images: [{ url: image }],
+      images: [{ url: image, width: 1200, height: 630 }],
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
-      title: church.name,
+      title: event.name,
       description,
       images: [image],
     },
   };
 }
 
-export default async function ChurchPage({ params }: { params: { slug: string } }) {
-  const church = await getChurch(params.slug);
-  if (!church) return notFound();
+export default async function EventPage({ params }: { params: { slug: string } }) {
+  const event = await getEvent(params.slug);
+  if (!event) return notFound();
 
   const supabase = createClient();
-
-  const [
-    {
-      data: { user },
-    },
-    { data: streams },
-    { data: videos },
-    { data: events },
-  ] = await Promise.all([
-    supabase.auth.getUser(),
+  const [{ data: liveStreams }, { data: videos }] = await Promise.all([
     supabase
       .from('livestreams')
-      .select('slug, name, location, status, preview_image, start_at, stream_schedules(day_of_week, start_time)')
-      .eq('church_id', church.id)
+      .select('slug, name, location, status, preview_image')
+      .eq('event_id', event.id)
       .eq('visible', true),
     supabase
       .from('videos')
-      .select('slug, title, thumbnail, speaker, provider, provider_video_id')
-      .eq('church_id', church.id)
+      .select('slug, title, thumbnail, speaker')
+      .eq('event_id', event.id)
       .order('recorded_date', { ascending: false })
       .limit(8),
-    supabase
-      .from('events')
-      .select('slug, name, venue, town, start_date, end_date, status, poster_url')
-      .eq('host_church_id', church.id)
-      .in('status', ['upcoming', 'current'])
-      .order('start_date', { ascending: true }),
   ]);
 
-  let isFollowing = false;
-  if (user) {
-    const { data: followRow } = await supabase
-      .from('follows')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('church_id', church.id)
-      .maybeSingle();
-    isFollowing = !!followRow;
-  }
-
-  const liveNow = (streams ?? []).filter((s) => s.status === 'live');
-  const otherStreams = (streams ?? []).filter((s) => s.status !== 'live');
-
-  const directContact = [
-    church.phone && { label: church.phone, href: `tel:${church.phone}` },
-    church.email && { label: church.email, href: `mailto:${church.email}` },
-  ].filter(Boolean) as { label: string; href: string }[];
+  const dateRange = [event.start_date, event.end_date].filter(Boolean).join(' – ');
+  const timeRange = [event.start_time, event.end_time].filter(Boolean).join(' – ');
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
+      {event.poster_url && (
+        <div className="relative mb-6 aspect-video w-full overflow-hidden rounded-lg bg-slate-100">
+          <Image src={event.poster_url} alt={event.name} fill className="object-cover" />
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
-          {church.logo_url && (
-            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-slate-100">
-              <Image src={church.logo_url} alt={church.name} fill className="object-cover" />
-            </div>
-          )}
-          <div>
-            <h1 className="text-2xl font-bold">{church.name}</h1>
-            <p className="text-slate-500">
-              {[church.town, church.island_province, church.countries?.name].filter(Boolean).join(', ')}
+        <div>
+          <span className="text-xs font-semibold uppercase text-sky-600">{event.status}</span>
+          <h1 className="text-2xl font-bold">{event.name}</h1>
+          <p className="text-slate-500">
+            {[event.venue, event.town, event.island_province, event.countries?.name]
+              .filter(Boolean)
+              .join(', ')}
+          </p>
+          {event.churches ? (
+            <p className="text-sm text-slate-500">
+              Hosted by{' '}
+              <Link href={`/church/${event.churches.slug}`} className="text-sky-600 underline">
+                {event.churches.name}
+              </Link>
             </p>
-            {church.address && <p className="mt-1 text-sm text-slate-500">{church.address}</p>}
-          </div>
+          ) : event.ministries ? (
+            <p className="text-sm text-slate-500">
+              Hosted by{' '}
+              <Link href={`/ministry/${event.ministries.slug}`} className="text-sky-600 underline">
+                {event.ministries.name}
+              </Link>
+            </p>
+          ) : (
+            event.hosted_by && <p className="text-sm text-slate-500">Hosted by {event.hosted_by}</p>
+          )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <FollowButton type="church" id={church.id} following={isFollowing} redirectTo={`/church/${church.slug}`} />
-          <ShareButton title={church.name} />
-        </div>
+        <ShareButton title={event.name} />
       </div>
 
-      {(directContact.length > 0 || church.website || church.facebook || church.youtube) && (
-        <div className="mt-4 flex flex-wrap items-center gap-4">
-          {directContact.length > 0 && (
-            <div className="flex flex-wrap gap-4 text-sm">
-              {directContact.map((link) => (
-                <a key={link.href} href={link.href} className="text-sky-600 underline">
-                  {link.label}
-                </a>
-              ))}
-            </div>
-          )}
-          <SocialLinks website={church.website} facebook={church.facebook} youtube={church.youtube} />
-        </div>
-      )}
+      <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-600">
+        {dateRange && <span>{dateRange}</span>}
+        {timeRange && <span>{timeRange}</span>}
+        {event.languages && event.languages.length > 0 && <span>Languages: {event.languages.join(', ')}</span>}
+      </div>
 
-      {church.description && <p className="mt-6 text-slate-700">{church.description}</p>}
-      {church.worship_times && (
-        <p className="mt-2 text-sm text-slate-600">
-          <span className="font-medium">Worship times:</span> {church.worship_times}
+      <div className="mt-3">
+        <SocialLinks website={event.website} facebook={event.facebook} youtube={event.youtube} />
+      </div>
+
+      {event.description && <p className="mt-4 text-slate-700">{event.description}</p>}
+
+      <div className="mt-6 flex items-center gap-3 rounded border border-slate-200 bg-slate-50 p-4">
+        <QRCodeImage
+          value={`https://lotu.live/event/${event.slug}`}
+          size={120}
+          downloadName={`${event.slug}-qr.png`}
+        />
+        <p className="text-sm text-slate-600">
+          Scan to open this event page on a phone — handy for flyers, bulletins, or a projector slide.
         </p>
-      )}
+      </div>
 
-      {liveNow.length > 0 && (
+      {liveStreams && liveStreams.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-3 font-semibold">Current Livestream</h2>
+          <h2 className="mb-3 font-semibold">Livestreams</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {liveNow.map((s) => (
+            {liveStreams.map((s) => (
               <LiveCard
                 key={s.slug}
                 slug={s.slug}
@@ -154,53 +141,6 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
                 location={s.location}
                 status={s.status as any}
                 previewImage={s.preview_image}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {otherStreams.length > 0 && (
-        <section className="mt-8">
-          <h2 className="mb-3 font-semibold">
-            {liveNow.length > 0 ? 'Other Livestream Channels' : 'Livestreams'}
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {otherStreams.map((s) => (
-              <LiveCard
-                key={s.slug}
-                slug={s.slug}
-                name={s.name}
-                location={s.location}
-                status={s.status as any}
-                previewImage={s.preview_image}
-                scheduleText={getScheduleText(s)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {events && events.length > 0 && (
-        <section className="mt-8">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold">Upcoming Events</h2>
-            <Link href={`/events?church=${church.id}`} className="text-sm text-sky-600 underline">
-              View all →
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-            {events.map((e) => (
-              <EventCard
-                key={e.slug}
-                slug={e.slug}
-                name={e.name}
-                venue={e.venue}
-                town={e.town}
-                start_date={e.start_date}
-                end_date={e.end_date}
-                status={e.status}
-                poster_url={e.poster_url}
               />
             ))}
           </div>
@@ -209,23 +149,10 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
 
       {videos && videos.length > 0 && (
         <section className="mt-8">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold">Recent Videos</h2>
-            <Link href={`/videos?church=${church.id}`} className="text-sm text-sky-600 underline">
-              View all →
-            </Link>
-          </div>
+          <h2 className="mb-3 font-semibold">Videos</h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {videos.map((v) => (
-              <VideoCard
-                key={v.slug}
-                slug={v.slug}
-                title={v.title}
-                thumbnail={v.thumbnail}
-                speaker={v.speaker}
-                provider={v.provider as any}
-                providerVideoId={v.provider_video_id}
-              />
+              <VideoCard key={v.slug} slug={v.slug} title={v.title} thumbnail={v.thumbnail} speaker={v.speaker} />
             ))}
           </div>
         </section>
