@@ -120,6 +120,14 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <FollowButton type="church" id={church.id} following={isFollowing} redirectTo={`/church/${church.slug}`} />
+          {church.latitude != null && church.longitude != null && (
+            <a
+              href={`/map?church=${church.slug}`}
+              className="rounded border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
+            >
+              View on Map
+            </a>
+          )}
           <ShareButton title={church.name} />
         </div>
       </div>
