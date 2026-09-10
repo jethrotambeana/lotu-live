@@ -135,7 +135,7 @@ export default async function LivestreamFormPage({ searchParams }: { searchParam
           </select>
         </div>
 
-        <div className="flex gap-6">
+        <div className="flex flex-wrap gap-6">
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="visible" defaultChecked={stream?.visible ?? true} />
             Visible on site
@@ -143,6 +143,10 @@ export default async function LivestreamFormPage({ searchParams }: { searchParam
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="featured" defaultChecked={stream?.featured ?? false} />
             Featured
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="is_continuous" defaultChecked={stream?.is_continuous ?? false} />
+            Continuous / 24-7 (TV, radio) — skip "just went live" follower emails
           </label>
         </div>
 

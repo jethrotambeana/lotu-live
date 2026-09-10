@@ -115,6 +115,7 @@ async function sendEmail(to: string, subject: string, text: string): Promise<voi
 // select that would silently return nothing.
 async function notifyFollowers(supabase: SupabaseClient<any>, stream: StreamRow) {
   if (!RESEND_API_KEY) return;
+  if (stream.is_continuous) return; // 24/7 channel — "just went live" isn't a meaningful signal, see sql migration comments
   if (!stream.church_id && !stream.ministry_id) return;
 
   const filter = stream.church_id ? `church_id.eq.${stream.church_id}` : `ministry_id.eq.${stream.ministry_id}`;
@@ -194,6 +195,7 @@ interface StreamRow {
   ministry_id: string | null;
   event_id: string | null;
   language: string | null;
+  is_continuous: boolean;
 }
 
 // Looks up finished recordings for a Live Input and creates a Video row
@@ -268,7 +270,9 @@ export async function handler() {
 
   const { data: streams, error } = await supabase
     .from('livestreams')
-    .select('id, name, slug, provider_stream_id, status, church_id, ministry_id, event_id, language')
+    .select(
+      'id, name, slug, provider_stream_id, status, church_id, ministry_id, event_id, language, is_continuous'
+    )
     .eq('provider', 'cloudflare');
 
   if (error) {

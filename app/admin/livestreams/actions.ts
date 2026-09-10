@@ -71,6 +71,13 @@ export async function saveLivestream(formData: FormData) {
     featured: formData.get('featured') === 'on',
     visible: formData.get('visible') === 'on',
     status: (formData.get('status') as string) || 'offline',
+    // For 24/7 channels (TV/radio) rather than a typical service that
+    // goes live/offline in discrete bursts — "just went live" is a
+    // meaningless, potentially spammy signal for something that's always
+    // supposed to be on. Doesn't affect status detection or recording
+    // import, only whether check-livestream-status.ts's follower
+    // notification step runs for this stream.
+    is_continuous: formData.get('is_continuous') === 'on',
   };
 
   if (id) {
