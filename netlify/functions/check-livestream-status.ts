@@ -219,7 +219,10 @@ export async function handler() {
       // — it only takes over once a stream is genuinely live or has
       // stopped being live.
       if (isLive && stream.status !== 'live') {
-        await supabase.from('livestreams').update({ status: 'live' }).eq('id', stream.id);
+        await supabase
+          .from('livestreams')
+          .update({ status: 'live', last_live_at: new Date().toISOString() })
+          .eq('id', stream.id);
         updated++;
       } else if (!isLive) {
         if (stream.status === 'live') {

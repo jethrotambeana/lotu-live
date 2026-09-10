@@ -1,8 +1,12 @@
 import { createClient } from '@/lib/supabaseServer';
 import Link from 'next/link';
 
+const STALE_DAYS = 21;
+
 export default async function AdminDashboard() {
   const supabase = createClient();
+
+  const staleThreshold = new Date(Date.now() - STALE_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
   const [
     { count: churchCount },
@@ -14,6 +18,7 @@ export default async function AdminDashboard() {
     { count: pendingEditors },
     { count: pendingEvents },
     { count: pendingVideos },
+    { count: staleLivestreams },
   ] = await Promise.all([
     supabase.from('churches').select('*', { count: 'exact', head: true }),
     supabase.from('livestreams').select('*', { count: 'exact', head: true }).eq('status', 'live'),
@@ -24,13 +29,26 @@ export default async function AdminDashboard() {
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pending_editor'),
     supabase.from('events').select('*', { count: 'exact', head: true }).eq('approved', false),
     supabase.from('videos').select('*', { count: 'exact', head: true }).eq('approved', false),
+    // Scoped to provider = 'cloudflare' — that's the only provider this
+    // platform has automatic live/offline visibility into, so
+    // last_live_at is only ever meaningfully populated there. A YouTube/
+    // Facebook/HLS stream's last_live_at stays permanently null (no
+    // automatic detection for those), which would otherwise look
+    // identical to "actually gone quiet" even for a perfectly healthy
+    // stream we just have no visibility into.
+    supabase
+      .from('livestreams')
+      .select('*', { count: 'exact', head: true })
+      .eq('provider', 'cloudflare')
+      .or(`last_live_at.is.null,last_live_at.lt.${staleThreshold}`),
   ]);
 
   // Previously this card only ever counted the `submissions` (church) table,
   // silently missing event/ministry submissions entirely. Now combines all
   // three staging tables — matches what Admin → Submissions actually shows.
   const newSubmissions = (pendingChurchSubs ?? 0) + (pendingEventSubs ?? 0) + (pendingMinistrySubs ?? 0);
-  const needsAttention = newSubmissions + (pendingEditors ?? 0) + (pendingEvents ?? 0) + (pendingVideos ?? 0);
+  const needsAttention =
+    newSubmissions + (pendingEditors ?? 0) + (pendingEvents ?? 0) + (pendingVideos ?? 0) + (staleLivestreams ?? 0);
 
   return (
     <div>
@@ -41,7 +59,7 @@ export default async function AdminDashboard() {
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-amber-700">
             Needs Your Attention
           </h2>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
             <AttentionCard label="New Submissions" value={newSubmissions} href="/admin/submissions" />
             <AttentionCard
               label="Pending Editor Activations"
@@ -57,6 +75,11 @@ export default async function AdminDashboard() {
               label="Videos Awaiting Re-approval"
               value={pendingVideos ?? 0}
               href="/admin/videos"
+            />
+            <AttentionCard
+              label={`Stale Livestreams (${STALE_DAYS}+ days)`}
+              value={staleLivestreams ?? 0}
+              href="/admin/livestreams"
             />
           </div>
         </div>

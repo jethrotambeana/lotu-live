@@ -1,9 +1,10 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import './animations.css';
 import Link from 'next/link';
 import Image from 'next/image';
 import MobileNav from '@/components/MobileNav';
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 
 const SITE_TITLE = 'LOTU.LIVE — The Pacific Gospel Media Network';
 const SITE_DESCRIPTION =
@@ -13,6 +14,19 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://lotu.live'),
   title: SITE_TITLE,
   description: SITE_DESCRIPTION,
+  manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/icons/apple-touch-icon.png' }],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Lotu.live',
+  },
   openGraph: {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
@@ -26,6 +40,13 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     images: ['/hero-banner.jpg'],
   },
+};
+
+// Next.js 14 moved themeColor out of the `metadata` export into a
+// separate `viewport` export — leaving it in `metadata` still "works" but
+// prints a deprecation warning during build.
+export const viewport: Viewport = {
+  themeColor: '#0284c7',
 };
 
 const NAV = [
@@ -44,20 +65,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen bg-white text-slate-900">
+        <ServiceWorkerRegister />
         <header className="relative border-b border-slate-200">
-          <nav className="mx-auto flex max-w-6xl items-center justify-between p-4">
-            <Link href="/" className="flex items-center">
+          <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 p-4">
+            <Link href="/" className="flex shrink-0 items-center">
               {/* "?v=3" cache-busts Next's image optimizer, which caches
                   transformed images by URL rather than content and does not
-                  invalidate that cache on redeploy. New artwork (2026-09-09)
-                  is a different aspect ratio (1.5, was 1.626) than the
-                  previous file — width/height updated to match, since a
-                  mismatch between these props and the file's real ratio
-                  causes the browser to stretch/squash it under the
-                  h-14 w-auto CSS below. If logo-header.png is ever replaced
-                  again, bump this to "?v=4" (etc.) or the old image may
-                  keep being served regardless of what's actually in the
-                  file. */}
+                  invalidate that cache on redeploy. If logo-header.png is
+                  ever replaced again, bump this to "?v=4" (etc.) or the old
+                  image may keep being served regardless of what's actually
+                  in the file. */}
               <Image
                 src="/logo-header.png?v=3"
                 alt="LOTU.LIVE"
@@ -76,6 +93,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </li>
               ))}
             </ul>
+            <form action="/search" method="get" className="flex items-center">
+              <input
+                type="search"
+                name="q"
+                placeholder="Search..."
+                aria-label="Search"
+                className="w-24 rounded border border-slate-300 px-2 py-1.5 text-sm sm:w-40"
+              />
+            </form>
             <MobileNav items={NAV} />
           </nav>
         </header>
