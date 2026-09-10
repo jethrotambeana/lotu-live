@@ -129,7 +129,8 @@ export default function LoginPage() {
         <a href="/signup" className="underline">
           sign up page
         </a>
-        , then have an existing admin promote you in Supabase.
+        . You'll be able to follow churches and ministries right away — if you're managing a
+        church or ministry's page, an admin will grant you access after you sign up.
       </p>
     </div>
   );
