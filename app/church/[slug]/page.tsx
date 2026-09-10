@@ -9,6 +9,7 @@ import VideoCard from '@/components/VideoCard';
 import EventCard from '@/components/EventCard';
 import ShareButton from '@/components/ShareButton';
 import SocialLinks from '@/components/SocialLinks';
+import FollowButton from '@/components/FollowButton';
 import { getScheduleText } from '@/lib/schedule';
 
 const getChurch = cache(async (slug: string) => {
@@ -48,10 +49,16 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
   if (!church) return notFound();
 
   const supabase = createClient();
-  const [{ data: streams }, { data: videos }, { data: events }] = await Promise.all([
-    // All visible livestream channels for this church, regardless of
-    // current status — not just the one that happens to be live right
-    // now. Split into liveNow/otherStreams below.
+
+  const [
+    {
+      data: { user },
+    },
+    { data: streams },
+    { data: videos },
+    { data: events },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
     supabase
       .from('livestreams')
       .select('slug, name, location, status, preview_image, start_at, stream_schedules(day_of_week, start_time)')
@@ -70,6 +77,17 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
       .in('status', ['upcoming', 'current'])
       .order('start_date', { ascending: true }),
   ]);
+
+  let isFollowing = false;
+  if (user) {
+    const { data: followRow } = await supabase
+      .from('follows')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('church_id', church.id)
+      .maybeSingle();
+    isFollowing = !!followRow;
+  }
 
   const liveNow = (streams ?? []).filter((s) => s.status === 'live');
   const otherStreams = (streams ?? []).filter((s) => s.status !== 'live');
@@ -96,7 +114,10 @@ export default async function ChurchPage({ params }: { params: { slug: string } 
             {church.address && <p className="mt-1 text-sm text-slate-500">{church.address}</p>}
           </div>
         </div>
-        <ShareButton title={church.name} />
+        <div className="flex shrink-0 items-center gap-2">
+          <FollowButton type="church" id={church.id} following={isFollowing} redirectTo={`/church/${church.slug}`} />
+          <ShareButton title={church.name} />
+        </div>
       </div>
 
       {(directContact.length > 0 || church.website || church.facebook || church.youtube) && (

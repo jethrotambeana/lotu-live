@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import MobileNav from '@/components/MobileNav';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
+import { createClient } from '@/lib/supabaseServer';
+import { logout } from '@/app/actions/auth';
 
 const SITE_TITLE = 'LOTU.LIVE — The Pacific Gospel Media Network';
 const SITE_DESCRIPTION =
@@ -42,9 +44,6 @@ export const metadata: Metadata = {
   },
 };
 
-// Next.js 14 moved themeColor out of the `metadata` export into a
-// separate `viewport` export — leaving it in `metadata` still "works" but
-// prints a deprecation warning during build.
 export const viewport: Viewport = {
   themeColor: '#0284c7',
 };
@@ -61,7 +60,19 @@ const NAV = [
   { href: '/contact', label: 'Contact' },
 ];
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Read-only check purely to decide what the header shows — this is NOT
+  // an access guard (every page here is public regardless), just a
+  // display decision. Closes a real, previously-existing gap: before
+  // this, the main public site had no visible way to log in, log out, or
+  // even know whether you were signed in — /login and /signup only ever
+  // worked if you already knew to type the URL directly. That mattered
+  // more once Follow existed, since following requires an account.
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <html lang="en">
       <body className="min-h-screen bg-white text-slate-900">
@@ -69,12 +80,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="relative border-b border-slate-200">
           <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 p-4">
             <Link href="/" className="flex shrink-0 items-center">
-              {/* "?v=3" cache-busts Next's image optimizer, which caches
-                  transformed images by URL rather than content and does not
-                  invalidate that cache on redeploy. If logo-header.png is
-                  ever replaced again, bump this to "?v=4" (etc.) or the old
-                  image may keep being served regardless of what's actually
-                  in the file. */}
               <Image
                 src="/logo-header.png?v=3"
                 alt="LOTU.LIVE"
@@ -102,14 +107,29 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 className="w-24 rounded border border-slate-300 px-2 py-1.5 text-sm sm:w-40"
               />
             </form>
-            <MobileNav items={NAV} />
+            <div className="hidden items-center gap-3 text-sm sm:flex">
+              {user ? (
+                <>
+                  <Link href="/following" className="hover:text-sky-600">
+                    Following
+                  </Link>
+                  <form action={logout}>
+                    <button type="submit" className="hover:text-sky-600">
+                      Log out
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <Link href="/login" className="hover:text-sky-600">
+                  Log In
+                </Link>
+              )}
+            </div>
+            <MobileNav items={[...NAV, user ? { href: '/following', label: 'Following' } : { href: '/login', label: 'Log In' }]} />
           </nav>
         </header>
         <main>{children}</main>
         <footer className="mt-12 bg-black py-10 text-center">
-          {/* Untouched — this is a deliberately different white-on-black
-              recolor, not the same artwork with transparency, and stays
-              as-is. */}
           <Image
             src="/logo-footer.png?v=2"
             alt="LOTU.LIVE — Worship Together. Wherever You Are."

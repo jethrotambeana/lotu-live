@@ -5,22 +5,12 @@ import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import LiveCard from '@/components/LiveCard';
-import EventCard from '@/components/EventCard';
 import VideoCard from '@/components/VideoCard';
+import EventCard from '@/components/EventCard';
 import ShareButton from '@/components/ShareButton';
 import SocialLinks from '@/components/SocialLinks';
+import FollowButton from '@/components/FollowButton';
 import { getScheduleText } from '@/lib/schedule';
-
-const MINISTRY_TYPE_LABELS: Record<string, string> = {
-  music_singing: 'Music / Singing',
-  media_video: 'Media / Video',
-  livestream_team: 'Livestream Team',
-  youth: 'Youth',
-  outreach: 'Outreach',
-  prayer: 'Prayer',
-  childrens: "Children's",
-  other: 'Other',
-};
 
 const getMinistry = cache(async (slug: string) => {
   const supabase = createClient();
@@ -63,27 +53,45 @@ export default async function MinistryPage({ params }: { params: { slug: string 
   if (!ministry) return notFound();
 
   const supabase = createClient();
-  const [{ data: streams }, { data: events }, { data: videos }] = await Promise.all([
-    // All visible livestream channels for this ministry, regardless of
-    // current status — split into liveNow/otherStreams below.
+
+  const [
+    {
+      data: { user },
+    },
+    { data: streams },
+    { data: videos },
+    { data: events },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
     supabase
       .from('livestreams')
       .select('slug, name, location, status, preview_image, start_at, stream_schedules(day_of_week, start_time)')
       .eq('ministry_id', ministry.id)
       .eq('visible', true),
     supabase
-      .from('events')
-      .select('slug, name, venue, town, start_date, end_date, status, poster_url')
-      .eq('host_ministry_id', ministry.id)
-      .in('status', ['upcoming', 'current'])
-      .order('start_date', { ascending: true }),
-    supabase
       .from('videos')
       .select('slug, title, thumbnail, speaker, provider, provider_video_id')
       .eq('ministry_id', ministry.id)
       .order('recorded_date', { ascending: false })
       .limit(8),
+    supabase
+      .from('events')
+      .select('slug, name, venue, town, start_date, end_date, status, poster_url')
+      .eq('host_ministry_id', ministry.id)
+      .in('status', ['upcoming', 'current'])
+      .order('start_date', { ascending: true }),
   ]);
+
+  let isFollowing = false;
+  if (user) {
+    const { data: followRow } = await supabase
+      .from('follows')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('ministry_id', ministry.id)
+      .maybeSingle();
+    isFollowing = !!followRow;
+  }
 
   const liveNow = (streams ?? []).filter((s) => s.status === 'live');
   const otherStreams = (streams ?? []).filter((s) => s.status !== 'live');
@@ -99,39 +107,47 @@ export default async function MinistryPage({ params }: { params: { slug: string 
           )}
           <div>
             <h1 className="text-2xl font-bold">{ministry.name}</h1>
-            <p className="text-slate-500">{MINISTRY_TYPE_LABELS[ministry.type] || ministry.type}</p>
-            <p className="text-sm text-slate-500">
+            <p className="text-slate-500">
+              {ministry.type}
+              {ministry.churches?.name && (
+                <>
+                  {' · '}
+                  <Link href={`/church/${ministry.churches.slug}`} className="text-sky-600 underline">
+                    {ministry.churches.name}
+                  </Link>
+                </>
+              )}
+            </p>
+            <p className="text-slate-500">
               {[ministry.town, ministry.island_province, ministry.countries?.name].filter(Boolean).join(', ')}
             </p>
-            {ministry.churches && (
-              <p className="mt-1 text-sm text-slate-500">
-                Part of{' '}
-                <Link href={`/church/${ministry.churches.slug}`} className="text-sky-600 underline">
-                  {ministry.churches.name}
-                </Link>
-              </p>
-            )}
           </div>
         </div>
-        <ShareButton title={ministry.name} />
+        <div className="flex shrink-0 items-center gap-2">
+          <FollowButton
+            type="ministry"
+            id={ministry.id}
+            following={isFollowing}
+            redirectTo={`/ministry/${ministry.slug}`}
+          />
+          <ShareButton title={ministry.name} />
+        </div>
       </div>
 
-      {(ministry.phone || ministry.email || ministry.website || ministry.facebook || ministry.youtube) && (
+      {(ministry.email || ministry.phone || ministry.website || ministry.facebook || ministry.youtube) && (
         <div className="mt-4 flex flex-wrap items-center gap-4">
-          {(ministry.phone || ministry.email) && (
-            <div className="flex flex-wrap gap-4 text-sm">
-              {ministry.phone && (
-                <a href={`tel:${ministry.phone}`} className="text-sky-600 underline">
-                  {ministry.phone}
-                </a>
-              )}
-              {ministry.email && (
-                <a href={`mailto:${ministry.email}`} className="text-sky-600 underline">
-                  {ministry.email}
-                </a>
-              )}
-            </div>
-          )}
+          <div className="flex flex-wrap gap-4 text-sm">
+            {ministry.phone && (
+              <a href={`tel:${ministry.phone}`} className="text-sky-600 underline">
+                {ministry.phone}
+              </a>
+            )}
+            {ministry.email && (
+              <a href={`mailto:${ministry.email}`} className="text-sky-600 underline">
+                {ministry.email}
+              </a>
+            )}
+          </div>
           <SocialLinks website={ministry.website} facebook={ministry.facebook} youtube={ministry.youtube} />
         </div>
       )}
@@ -206,7 +222,7 @@ export default async function MinistryPage({ params }: { params: { slug: string 
       {videos && videos.length > 0 && (
         <section className="mt-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold">Videos</h2>
+            <h2 className="font-semibold">Recent Videos</h2>
             <Link href={`/videos?ministry=${ministry.id}`} className="text-sm text-sky-600 underline">
               View all →
             </Link>

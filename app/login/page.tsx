@@ -14,6 +14,7 @@ export default function LoginPage() {
 
   const confirmed = searchParams.get('confirmed');
   const confirmError = searchParams.get('confirmError');
+  const next = searchParams.get('next');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,6 +26,17 @@ export default function LoginPage() {
     if (error) {
       setLoading(false);
       setError(error.message);
+      return;
+    }
+
+    // A `next` param (e.g. from "follow this church" redirecting here to
+    // sign in first) always wins over the normal role-based destination —
+    // otherwise following would dump someone back on the homepage instead
+    // of the page they were actually trying to act on.
+    if (next && next.startsWith('/') && !next.startsWith('//')) {
+      setLoading(false);
+      router.push(next);
+      router.refresh();
       return;
     }
 
