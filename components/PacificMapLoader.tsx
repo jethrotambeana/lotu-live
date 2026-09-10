@@ -17,6 +17,6 @@ const PacificMap = dynamic(() => import('./PacificMap'), {
   ),
 });
 
-export default function PacificMapLoader({ churches }: { churches: MapChurch[] }) {
-  return <PacificMap churches={churches} />;
+export default function PacificMapLoader({ churches, focusSlug }: { churches: MapChurch[]; focusSlug?: string }) {
+  return <PacificMap churches={churches} focusSlug={focusSlug} />;
 }

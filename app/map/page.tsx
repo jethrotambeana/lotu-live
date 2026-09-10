@@ -6,7 +6,7 @@ export const metadata = {
   description: 'Find Seventh-day Adventist churches across the Pacific on a map.',
 };
 
-export default async function MapPage() {
+export default async function MapPage({ searchParams }: { searchParams: { church?: string } }) {
   const supabase = createClient();
 
   // Only churches with coordinates actually set show a pin — this is a
@@ -34,7 +34,7 @@ export default async function MapPage() {
           ? `${mapChurches.length} church${mapChurches.length === 1 ? '' : 'es'} plotted so far — tap a pin to visit its page.`
           : 'No churches have coordinates set yet — check back soon.'}
       </p>
-      <PacificMapLoader churches={mapChurches} />
+      <PacificMapLoader churches={mapChurches} focusSlug={searchParams.church} />
     </div>
   );
 }

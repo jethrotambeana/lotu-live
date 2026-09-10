@@ -29,7 +29,7 @@ const churchIcon = L.divIcon({
   iconAnchor: [8, 8],
 });
 
-export default function PacificMap({ churches }: { churches: MapChurch[] }) {
+export default function PacificMap({ churches, focusSlug }: { churches: MapChurch[]; focusSlug?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
 
@@ -44,13 +44,26 @@ export default function PacificMap({ churches }: { churches: MapChurch[] }) {
       maxZoom: 18,
     }).addTo(map);
 
+    let focusMarker: L.Marker | null = null;
+
     for (const church of churches) {
-      L.marker([church.latitude, church.longitude], { icon: churchIcon })
+      const marker = L.marker([church.latitude, church.longitude], { icon: churchIcon })
         .addTo(map)
         .bindPopup(
           `<a href="/church/${church.slug}" style="font-weight:600;color:#0284c7;">${church.name}</a>` +
             (church.town ? `<br/><span style="color:#64748b;font-size:0.85em;">${church.town}</span>` : '')
         );
+      if (focusSlug && church.slug === focusSlug) {
+        focusMarker = marker;
+      }
+    }
+
+    // Arriving via a "View on Map" link from a specific church's page —
+    // zoom straight to its pin and open its popup, rather than leaving
+    // the visitor to find it themselves among every other church.
+    if (focusMarker) {
+      map.setView(focusMarker.getLatLng(), 12);
+      focusMarker.openPopup();
     }
 
     return () => {
