@@ -30,7 +30,13 @@ export default function MobileNav({ items }: MobileNavProps) {
       </button>
 
       {open && (
-        <ul className="absolute left-0 right-0 top-full z-50 border-b border-slate-200 bg-white px-4 py-2 shadow-md">
+        // z-[2000] — deliberately well above z-50. Leaflet's own map
+        // controls (zoom buttons, its internal panes) default to
+        // z-index:1000, which sat above this dropdown on the /map page
+        // specifically, since nothing else on the site previously used a
+        // high z-index to conflict with. 2000 keeps this menu on top of
+        // any current or future widget in that same range.
+        <ul className="absolute left-0 right-0 top-full z-[2000] border-b border-slate-200 bg-white px-4 py-2 shadow-md">
           {items.map((item) => (
             <li key={item.href}>
               <Link
