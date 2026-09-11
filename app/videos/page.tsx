@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabaseServer';
 import FilterBar from '@/components/FilterBar';
 import SeriesCard from '@/components/SeriesCard';
@@ -26,10 +27,12 @@ export const metadata: Metadata = {
   },
 };
 
+const PAGE_SIZE = 24;
+
 export default async function VideosPage({
   searchParams,
 }: {
-  searchParams: { category?: string; language?: string; church?: string; ministry?: string };
+  searchParams: { category?: string; language?: string; church?: string; ministry?: string; page?: string };
 }) {
   const supabase = createClient();
 
@@ -44,6 +47,13 @@ export default async function VideosPage({
   const languages = Array.from(
     new Set((languageRows ?? []).map((r: any) => r.language).filter(Boolean))
   ).sort();
+
+  // Page is 1-indexed for the URL (?page=1, ?page=2, ...) but Supabase's
+  // .range() is a zero-indexed [from, to] pair — parseInt falling back to
+  // 1 covers both "no page param" and a malformed one (e.g. ?page=abc).
+  const page = Math.max(1, parseInt(searchParams.page || '1', 10) || 1);
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
 
   // Only join video_categories (with !inner) when actually filtering by
   // category — an unconditional inner join would silently exclude any
@@ -67,8 +77,29 @@ export default async function VideosPage({
     query = query.eq('ministry_id', searchParams.ministry);
   }
 
-  const { data: videosRaw } = await query.order('recorded_date', { ascending: false }).limit(24);
+  const { data: videosRaw } = await query.order('recorded_date', { ascending: false }).range(from, to);
   const videos = (videosRaw ?? []) as any[];
+
+  // A full page of raw rows means there's likely a next page; anything
+  // short of that means this is the last one. Deliberately not running a
+  // separate exact COUNT query to compute total pages — series grouping
+  // below means "24 raw rows" doesn't map to a fixed number of displayed
+  // cards anyway, so an exact page count would be more complex to compute
+  // than it's worth. A plain Previous/Next pager fits the actual data
+  // shape better than numbered pages would.
+  const hasNextPage = videos.length === PAGE_SIZE;
+  const hasPrevPage = page > 1;
+
+  function buildPageUrl(targetPage: number): string {
+    const params = new URLSearchParams();
+    if (searchParams.category) params.set('category', searchParams.category);
+    if (searchParams.language) params.set('language', searchParams.language);
+    if (searchParams.church) params.set('church', searchParams.church);
+    if (searchParams.ministry) params.set('ministry', searchParams.ministry);
+    if (targetPage > 1) params.set('page', String(targetPage));
+    const qs = params.toString();
+    return qs ? `/videos?${qs}` : '/videos';
+  }
 
   // Group consecutive/repeated series into a single card, in first-seen
   // order (i.e. the order of that series' most recent episode) — a video
@@ -185,6 +216,26 @@ export default async function VideosPage({
           </div>
         ) : (
           <p className="text-slate-500">No videos match these filters.</p>
+        )}
+
+        {(hasPrevPage || hasNextPage) && (
+          <div className="mt-8 flex items-center justify-between">
+            {hasPrevPage ? (
+              <Link href={buildPageUrl(page - 1)} className="rounded border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">
+                ← Previous
+              </Link>
+            ) : (
+              <span />
+            )}
+            <span className="text-sm text-slate-400">Page {page}</span>
+            {hasNextPage ? (
+              <Link href={buildPageUrl(page + 1)} className="rounded border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">
+                Next →
+              </Link>
+            ) : (
+              <span />
+            )}
+          </div>
         )}
       </div>
     </>
