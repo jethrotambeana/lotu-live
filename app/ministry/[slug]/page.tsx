@@ -98,7 +98,7 @@ export default async function MinistryPage({ params }: { params: { slug: string 
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
           {ministry.logo_url && (
             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-slate-100">
@@ -123,7 +123,7 @@ export default async function MinistryPage({ params }: { params: { slug: string 
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <FollowButton
             type="ministry"
             id={ministry.id}

@@ -76,7 +76,7 @@ export default async function EventPage({ params }: { params: { slug: string } }
         </div>
       )}
 
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <span className="text-xs font-semibold uppercase text-sky-600">{event.status}</span>
           <h1 className="text-2xl font-bold">{event.name}</h1>
@@ -103,7 +103,9 @@ export default async function EventPage({ params }: { params: { slug: string } }
             event.hosted_by && <p className="text-sm text-slate-500">Hosted by {event.hosted_by}</p>
           )}
         </div>
-        <ShareButton title={event.name} />
+        <div className="flex flex-wrap items-center gap-2">
+          <ShareButton title={event.name} />
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-600">
