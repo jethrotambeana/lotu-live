@@ -13,6 +13,10 @@
 [functions."check-livestream-status"]
   schedule = "*/10 * * * *"
 
+# YouTube's counterpart to the above — every 10 minutes, all week.
+[functions."check-youtube-status"]
+  schedule = "*/10 * * * *"
+
 # Saturday-morning peak polling, every 5 minutes. Many churches across
 # Vanuatu/Solomon Islands/PNG/Fiji begin Sabbath services around 8-11am
 # LOCAL time — but those four countries span three different UTC offsets
