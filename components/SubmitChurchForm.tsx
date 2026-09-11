@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabaseClient';
+import TurnstileWidget from '@/components/TurnstileWidget';
+import { submitChurch } from '@/app/submit/actions';
 
 export default function SubmitChurchForm() {
   const [countries, setCountries] = useState<{ id: string; name: string }[]>([]);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'sent' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [form, setForm] = useState({
     church_name: '',
     country_id: '',
@@ -30,10 +34,27 @@ export default function SubmitChurchForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!turnstileToken) {
+      setErrorMessage('Please complete the verification above before submitting.');
+      setStatus('error');
+      return;
+    }
+
     setStatus('submitting');
-    const supabase = createClient();
-    const { error } = await supabase.from('submissions').insert(form);
-    setStatus(error ? 'error' : 'sent');
+    setErrorMessage(null);
+
+    const fd = new FormData();
+    Object.entries(form).forEach(([key, value]) => fd.append(key, value));
+    fd.append('turnstileToken', turnstileToken);
+
+    const result = await submitChurch(fd);
+    if (result.success) {
+      setStatus('sent');
+    } else {
+      setErrorMessage(result.error ?? 'Something went wrong — please try again.');
+      setStatus('error');
+    }
   }
 
   if (status === 'sent') {
@@ -96,6 +117,9 @@ export default function SubmitChurchForm() {
         Livestream setup happens after your church is approved — we'll reach out separately
         with streaming details, so there's no need to include that here.
       </p>
+
+      <TurnstileWidget onVerify={setTurnstileToken} />
+
       <button
         type="submit"
         disabled={status === 'submitting'}
@@ -104,7 +128,7 @@ export default function SubmitChurchForm() {
         {status === 'submitting' ? 'Submitting...' : 'Submit Church'}
       </button>
       {status === 'error' && (
-        <p className="text-sm text-red-600">Something went wrong — please try again.</p>
+        <p className="text-sm text-red-600">{errorMessage ?? 'Something went wrong — please try again.'}</p>
       )}
     </form>
   );

@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabaseClient';
+import TurnstileWidget from '@/components/TurnstileWidget';
+import { submitEvent } from '@/app/submit-event/actions';
 
 export default function SubmitEventForm() {
   const [countries, setCountries] = useState<{ id: string; name: string }[]>([]);
   const [churches, setChurches] = useState<{ id: string; name: string }[]>([]);
   const [ministries, setMinistries] = useState<{ id: string; name: string }[]>([]);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'sent' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [form, setForm] = useState({
     event_name: '',
     hosted_by: '',
@@ -40,20 +44,27 @@ export default function SubmitEventForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!turnstileToken) {
+      setErrorMessage('Please complete the verification above before submitting.');
+      setStatus('error');
+      return;
+    }
+
     setStatus('submitting');
-    const supabase = createClient();
-    const { error } = await supabase.from('event_submissions').insert({
-      ...form,
-      host_church_id: form.host_church_id || null,
-      host_ministry_id: form.host_ministry_id || null,
-      // Postgres's date/time column types reject an empty string outright
-      // (only a valid value or null is accepted) — these are all optional
-      // in the form, so a blank one must become null, not "".
-      end_date: form.end_date || null,
-      start_time: form.start_time || null,
-      end_time: form.end_time || null,
-    });
-    setStatus(error ? 'error' : 'sent');
+    setErrorMessage(null);
+
+    const fd = new FormData();
+    Object.entries(form).forEach(([key, value]) => fd.append(key, value));
+    fd.append('turnstileToken', turnstileToken);
+
+    const result = await submitEvent(fd);
+    if (result.success) {
+      setStatus('sent');
+    } else {
+      setErrorMessage(result.error ?? 'Something went wrong — please try again.');
+      setStatus('error');
+    }
   }
 
   if (status === 'sent') {
@@ -188,6 +199,8 @@ export default function SubmitEventForm() {
         there's no need to include streaming details here.
       </p>
 
+      <TurnstileWidget onVerify={setTurnstileToken} />
+
       <button
         type="submit"
         disabled={status === 'submitting'}
@@ -195,7 +208,9 @@ export default function SubmitEventForm() {
       >
         {status === 'submitting' ? 'Submitting...' : 'Submit Event'}
       </button>
-      {status === 'error' && <p className="text-sm text-red-600">Something went wrong — please try again.</p>}
+      {status === 'error' && (
+        <p className="text-sm text-red-600">{errorMessage ?? 'Something went wrong — please try again.'}</p>
+      )}
     </form>
   );
 }

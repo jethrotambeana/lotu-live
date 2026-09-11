@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabaseClient';
+import TurnstileWidget from '@/components/TurnstileWidget';
+import { submitMinistry } from '@/app/submit-ministry/actions';
 
 const MINISTRY_TYPES = [
   { value: 'music_singing', label: 'Music / Singing' },
@@ -18,6 +20,8 @@ export default function SubmitMinistryForm() {
   const [countries, setCountries] = useState<{ id: string; name: string }[]>([]);
   const [churches, setChurches] = useState<{ id: string; name: string }[]>([]);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'sent' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [form, setForm] = useState({
     ministry_name: '',
     type: 'other',
@@ -42,12 +46,27 @@ export default function SubmitMinistryForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!turnstileToken) {
+      setErrorMessage('Please complete the verification above before submitting.');
+      setStatus('error');
+      return;
+    }
+
     setStatus('submitting');
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('ministry_submissions')
-      .insert({ ...form, church_id: form.church_id || null });
-    setStatus(error ? 'error' : 'sent');
+    setErrorMessage(null);
+
+    const fd = new FormData();
+    Object.entries(form).forEach(([key, value]) => fd.append(key, value));
+    fd.append('turnstileToken', turnstileToken);
+
+    const result = await submitMinistry(fd);
+    if (result.success) {
+      setStatus('sent');
+    } else {
+      setErrorMessage(result.error ?? 'Something went wrong — please try again.');
+      setStatus('error');
+    }
   }
 
   if (status === 'sent') {
@@ -151,6 +170,8 @@ export default function SubmitMinistryForm() {
       {field('facebook', 'Facebook')}
       {field('youtube', 'YouTube')}
 
+      <TurnstileWidget onVerify={setTurnstileToken} />
+
       <button
         type="submit"
         disabled={status === 'submitting'}
@@ -158,7 +179,9 @@ export default function SubmitMinistryForm() {
       >
         {status === 'submitting' ? 'Submitting...' : 'Submit Ministry'}
       </button>
-      {status === 'error' && <p className="text-sm text-red-600">Something went wrong — please try again.</p>}
+      {status === 'error' && (
+        <p className="text-sm text-red-600">{errorMessage ?? 'Something went wrong — please try again.'}</p>
+      )}
     </form>
   );
 }
