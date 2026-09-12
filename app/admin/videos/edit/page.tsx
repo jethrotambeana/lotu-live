@@ -208,6 +208,11 @@ export default async function VideoFormPage({
           name="thumbnail"
           defaultValue={defaults.thumbnail}
         />
+        <Field
+          label="Duration in seconds (auto-filled for YouTube and Cloudflare Stream if left blank — required for Cloudinary, needed for the LOTU.Live Channel feature)"
+          name="duration_seconds"
+          defaultValue={video?.duration_seconds != null ? String(video.duration_seconds) : ''}
+        />
         <Field label="Language" name="language" defaultValue={defaults.language} />
 
         <div>

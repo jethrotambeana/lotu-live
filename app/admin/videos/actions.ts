@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { deriveYouTubeThumbnail, deriveCloudflareThumbnail } from '@/lib/thumbnails';
 import { deleteCloudflareRecording } from '@/lib/cloudflareStream';
+import { lookupVideoDuration } from '@/lib/videoDuration';
 
 // videos.provider check constraint only allows these three (see sql/schema.sql) —
 // note this is a different set than livestreams' Provider type in lib/embed.ts
@@ -61,6 +62,19 @@ export async function saveVideo(formData: FormData) {
     // cloudinary: no auto-derivation yet — leave null, admin pastes manually.
   }
 
+  // Powers the LOTU.Live Channel's scheduling math — needs to know
+  // exactly how long each video is. Auto-looked-up for YouTube/Cloudflare
+  // (same APIs already used elsewhere); a manual "Duration (seconds)"
+  // field on the form is the fallback for Cloudinary (no API integration
+  // exists for it) or if auto-lookup fails for any reason (e.g. a
+  // YouTube video still processing). Manual entry always wins if
+  // provided, same priority pattern as the thumbnail field above.
+  const manualDuration = formData.get('duration_seconds') as string;
+  let durationSeconds: number | null = manualDuration ? parseInt(manualDuration, 10) : null;
+  if (durationSeconds === null || Number.isNaN(durationSeconds)) {
+    durationSeconds = await lookupVideoDuration(provider, providerVideoId);
+  }
+
   const record = {
     title,
     slug: (formData.get('slug') as string) || slugify(title),
@@ -75,6 +89,7 @@ export async function saveVideo(formData: FormData) {
     provider,
     provider_video_id: providerVideoId,
     thumbnail,
+    duration_seconds: durationSeconds,
     language: (formData.get('language') as string) || null,
     description: (formData.get('description') as string) || null,
     recorded_date: (formData.get('recorded_date') as string) || null,
@@ -142,4 +157,42 @@ export async function toggleVideoApproved(formData: FormData) {
   revalidatePath('/admin/videos');
   revalidatePath('/videos');
   revalidatePath('/');
+}
+
+// One-time catch-up for videos saved before duration tracking existed.
+// Capped at 20 per click — a serverless function has an execution time
+// limit, and looking up dozens of videos sequentially in one request
+// risks timing out partway through. Click again to process the next
+// batch; already-populated videos are never re-processed, so repeated
+// clicks are always safe and make steady progress rather than redoing
+// work.
+const BACKFILL_BATCH_SIZE = 20;
+
+export async function backfillVideoDurations(): Promise<{ processed: number; updated: number; remaining: number }> {
+  const supabase = createClient();
+
+  const { data: videos } = await supabase
+    .from('videos')
+    .select('id, provider, provider_video_id')
+    .is('duration_seconds', null)
+    .in('provider', ['youtube', 'cloudflare']) // cloudinary has no lookup — see lib/videoDuration.ts
+    .limit(BACKFILL_BATCH_SIZE);
+
+  let updated = 0;
+  for (const video of videos ?? []) {
+    const duration = await lookupVideoDuration(video.provider, video.provider_video_id);
+    if (duration !== null) {
+      await supabase.from('videos').update({ duration_seconds: duration }).eq('id', video.id);
+      updated++;
+    }
+  }
+
+  const { count: remaining } = await supabase
+    .from('videos')
+    .select('id', { count: 'exact', head: true })
+    .is('duration_seconds', null)
+    .in('provider', ['youtube', 'cloudflare']);
+
+  revalidatePath('/admin/videos');
+  return { processed: videos?.length ?? 0, updated, remaining: remaining ?? 0 };
 }

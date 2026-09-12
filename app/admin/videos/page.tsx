@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { deleteVideo, toggleVideoApproved } from './actions';
 import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
 import FilterBar from '@/components/FilterBar';
+import BackfillDurationsButton from './BackfillDurationsButton';
 
 export default async function AdminVideosPage({
   searchParams,
@@ -44,6 +45,10 @@ export default async function AdminVideosPage({
           {pendingCount} video{pendingCount === 1 ? '' : 's'} awaiting approval — shown first in the list below.
         </div>
       )}
+
+      <div className="mb-4">
+        <BackfillDurationsButton />
+      </div>
 
       <FilterBar
         filters={[
