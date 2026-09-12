@@ -245,6 +245,12 @@ async function importFinishedRecordings(supabase: SupabaseClient<any>, stream: S
       provider: 'cloudflare',
       provider_video_id: rec.uid,
       thumbnail: rec.thumbnail || deriveCloudflareThumbnail(rec.uid),
+      // Cloudflare's recordings-list response already includes duration
+      // per item (same video-resource shape as the single-video GET
+      // endpoint used elsewhere) — no extra API call needed. -1 means
+      // still processing, same "not available yet" handling used in
+      // lib/videoDuration.ts.
+      duration_seconds: typeof rec.duration === 'number' && rec.duration >= 0 ? Math.round(rec.duration) : null,
       language: stream.language,
       recorded_date: rec.created ? rec.created.slice(0, 10) : null,
       // Goes straight to the public site — see the top-of-file comment

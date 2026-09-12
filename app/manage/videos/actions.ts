@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { deriveYouTubeThumbnail, deriveCloudflareThumbnail } from '@/lib/thumbnails';
 import { deleteCloudflareRecording } from '@/lib/cloudflareStream';
+import { lookupVideoDuration } from '@/lib/videoDuration';
 import { requireEditor } from '@/lib/requireEditor';
 
 type VideoProvider = 'cloudflare' | 'youtube' | 'cloudinary';
@@ -33,6 +34,13 @@ export async function saveMyVideo(formData: FormData) {
     else if (provider === 'cloudflare') thumbnail = deriveCloudflareThumbnail(providerVideoId);
   }
 
+  // Powers the LOTU.Live Channel's scheduling math. Auto-lookup only here
+  // (no manual override field on the editor form, unlike the admin one)
+  // — YouTube/Cloudflare covers the vast majority of editor-submitted
+  // videos; a Cloudinary video without a duration just won't be eligible
+  // for the channel rotation until an admin fills it in manually.
+  const durationSeconds = await lookupVideoDuration(provider, providerVideoId);
+
   // event_id must belong to this editor's own church/ministry.
   const requestedEventId = (formData.get('event_id') as string) || null;
   let eventId: string | null = null;
@@ -57,6 +65,7 @@ export async function saveMyVideo(formData: FormData) {
     provider,
     provider_video_id: providerVideoId,
     thumbnail,
+    duration_seconds: durationSeconds,
     language: (formData.get('language') as string) || null,
     description: (formData.get('description') as string) || null,
     recorded_date: (formData.get('recorded_date') as string) || null,
