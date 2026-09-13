@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabaseServer';
 import { computeCurrentSegment, ChannelVideo } from '@/lib/channelSchedule';
-import ChannelAutoRefresh from '@/components/ChannelAutoRefresh';
+import ChannelPlayer from '@/components/ChannelPlayer';
 
 export const metadata = {
   title: 'LOTU.Live Channel — Watch Now',
@@ -27,17 +27,27 @@ function extractCloudflareId(input: string): string {
   return match ? match[1] : input;
 }
 
+// controls=0/false, modestbranding, and rel=0 all serve the same goal:
+// this should feel like tuning into a channel, not watching an embedded
+// YouTube/Cloudflare video with a visible player chrome and related-video
+// links out of the site.
 function buildEmbedUrl(provider: string, providerVideoId: string, startSeconds: number, isLive: boolean): string {
   if (provider === 'youtube') {
     const id = extractYouTubeId(providerVideoId);
-    const params = new URLSearchParams({ autoplay: '1', mute: '1' });
+    const params = new URLSearchParams({
+      autoplay: '1',
+      mute: '1',
+      controls: '0',
+      modestbranding: '1',
+      rel: '0',
+    });
     if (!isLive) params.set('start', String(startSeconds));
     return `https://www.youtube.com/embed/${id}?${params.toString()}`;
   }
   if (provider === 'cloudflare') {
     const id = extractCloudflareId(providerVideoId);
     const customerCode = process.env.NEXT_PUBLIC_CLOUDFLARE_CUSTOMER_CODE;
-    const params = new URLSearchParams({ autoplay: 'true', muted: 'true' });
+    const params = new URLSearchParams({ autoplay: 'true', muted: 'true', controls: 'false' });
     if (!isLive) params.set('startTime', String(startSeconds));
     return `https://customer-${customerCode}.cloudflarestream.com/${id}/iframe?${params.toString()}`;
   }
@@ -68,7 +78,6 @@ export default async function ChannelPage() {
     const embedUrl = buildEmbedUrl(liveStream.provider, liveStream.provider_stream_id, 0, true);
     return (
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <ChannelAutoRefresh />
         <div className="mb-4 flex items-center gap-2">
           <span className="flex items-center gap-1.5 rounded bg-red-600 px-2 py-1 text-xs font-semibold text-white">
             <span className="relative flex h-2 w-2">
@@ -80,14 +89,7 @@ export default async function ChannelPage() {
           <h1 className="text-xl font-bold">{liveStream.name}</h1>
         </div>
         <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
-          {embedUrl && (
-            <iframe
-              src={embedUrl}
-              className="h-full w-full"
-              allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
-              allowFullScreen
-            />
-          )}
+          {embedUrl && <ChannelPlayer embedKey={`live-${liveStream.id}`} embedUrl={embedUrl} />}
         </div>
         <p className="mt-3 text-sm text-slate-500">
           The LOTU.Live Channel cuts to any live broadcast automatically — when this one ends,
@@ -126,20 +128,19 @@ export default async function ChannelPage() {
     false
   );
 
+  // Unique per actual scheduled occurrence (not just per video) — if the
+  // same video ever appears more than once in a day's rotation (a small
+  // library looping), each occurrence still gets its own end timestamp,
+  // so the player correctly treats them as distinct segments rather than
+  // getting stuck on the first one's offset.
+  const embedKey = `vod-${segment.segmentEndsAt.toISOString()}`;
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <ChannelAutoRefresh />
       <h1 className="mb-1 text-2xl font-bold">LOTU.Live Channel</h1>
       <p className="mb-4 text-slate-500">Now playing: {segment.video.title}</p>
       <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
-        {embedUrl && (
-          <iframe
-            src={embedUrl}
-            className="h-full w-full"
-            allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
-            allowFullScreen
-          />
-        )}
+        {embedUrl && <ChannelPlayer embedKey={embedKey} embedUrl={embedUrl} />}
       </div>
       <p className="mt-3 text-sm text-slate-500">
         Playing continuously from the video library — the channel automatically switches to any
