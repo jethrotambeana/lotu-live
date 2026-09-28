@@ -17,9 +17,14 @@ export interface LiveCardProps {
   // useful for non-live cards so an offline channel still tells visitors
   // something actionable rather than just sitting there looking dead.
   scheduleText?: string | null;
+  // Overrides the default `/watch/{slug}` destination — used for the
+  // LOTU.Live Channel card on the homepage, which links to /channel
+  // rather than a per-stream /watch/{slug} page (it isn't a row in the
+  // livestreams table, so it has no real slug to route through there).
+  href?: string;
 }
 
-export default function LiveCard({ slug, name, location, status, previewImage, scheduleText }: LiveCardProps) {
+export default function LiveCard({ slug, name, location, status, previewImage, scheduleText, href }: LiveCardProps) {
   // Starts from previewImage (or the placeholder if there isn't one), and
   // falls back to the placeholder again if that URL fails to actually
   // load — e.g. a Cloudflare-derived thumbnail URL that's well-formed but
@@ -30,7 +35,7 @@ export default function LiveCard({ slug, name, location, status, previewImage, s
 
   return (
     <Link
-      href={`/watch/${slug}`}
+      href={href ?? `/watch/${slug}`}
       className="group block overflow-hidden rounded-lg border border-slate-200 transition-shadow hover:shadow-md"
     >
       <div className="relative aspect-video overflow-hidden bg-slate-100">

@@ -82,25 +82,39 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Live Now */}
+      {/* Live Now — the LOTU.Live Channel card always leads this grid,
+          since it's a 24/7 stream rather than a church that goes live/
+          offline in bursts like everything else here. It isn't a row in
+          the livestreams table (no query for it, above), so it's a plain
+          LiveCard usage with hand-written props and an explicit `href`
+          override pointing at /channel instead of the default
+          /watch/{slug} every other card uses. */}
       <ScrollReveal>
         <section className="mx-auto max-w-6xl px-4 py-10">
           <h2 className="mb-4 text-xl font-semibold">Live Now</h2>
-          {liveNow && liveNow.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-              {liveNow.map((s) => (
-                <LiveCard
-                  key={s.slug}
-                  slug={s.slug}
-                  name={s.name}
-                  location={s.location}
-                  status="live"
-                  previewImage={s.preview_image}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-slate-500">No broadcasts are live right now — check Coming Up below.</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+            <LiveCard
+              slug="channel"
+              href="/channel"
+              name="LOTU.Live Channel"
+              location="Playing 24/7 — videos & any live broadcast"
+              status="live"
+            />
+            {liveNow?.map((s) => (
+              <LiveCard
+                key={s.slug}
+                slug={s.slug}
+                name={s.name}
+                location={s.location}
+                status="live"
+                previewImage={s.preview_image}
+              />
+            ))}
+          </div>
+          {(!liveNow || liveNow.length === 0) && (
+            <p className="mt-4 text-slate-500">
+              No individual church broadcasts are live right now — the Channel above is always on.
+            </p>
           )}
         </section>
       </ScrollReveal>
