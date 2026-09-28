@@ -111,14 +111,6 @@ export default function ChannelClient({ initial }: { initial: ChannelState }) {
           onAudioChange={(muted, volume) => setAudioPrefs({ muted, volume })}
         />
       </div>
-      <p className="mt-3 text-sm text-slate-500">
-        {state.forced
-          ? "An admin picked this to play right now — the channel will return to its regular playlist once it finishes."
-          : 'Playing continuously from the channel playlist — the channel automatically switches to any church\'s livestream the moment one begins.'}
-      </p>
-      <a href={`/video/${state.videoSlug}`} className="mt-2 inline-block text-sm text-sky-600 underline">
-        View this video's own page →
-      </a>
     </div>
   );
 }
