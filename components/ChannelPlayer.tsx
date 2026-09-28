@@ -14,11 +14,21 @@ interface ChannelPlayerProps {
 // the player, before it fades out again (touch: after a tap).
 const CONTROLS_HIDE_DELAY_MS = 2500;
 
+// How long the black "starting up" cover stays over the player after each
+// new video/segment loads. YouTube (and to a lesser extent Cloudflare)
+// embeds show their own branding/title overlay for a moment, and YouTube in
+// particular tends to briefly flash to black once its player JS finishes
+// attaching (the same handshake that lets the mute/volume controls work).
+// Neither can be suppressed at the source, so this cover just hides both
+// behind a clean black screen until playback has settled down.
+const STARTUP_COVER_MS = 3000;
+
 export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelPlayerProps) {
   const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [current, setCurrent] = useState({ key: embedKey, url: embedUrl });
 
@@ -28,13 +38,30 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
 
   const [showControls, setShowControls] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isStarting, setIsStarting] = useState(true);
+
+  function armStartupCover() {
+    setIsStarting(true);
+    if (startupTimer.current) clearTimeout(startupTimer.current);
+    startupTimer.current = setTimeout(() => setIsStarting(false), STARTUP_COVER_MS);
+  }
 
   useEffect(() => {
     if (embedKey !== current.key) {
       setCurrent({ key: embedKey, url: embedUrl });
+      armStartupCover();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [embedKey, embedUrl]);
+
+  // Covers the very first load too, and cleans up the timer on unmount.
+  useEffect(() => {
+    armStartupCover();
+    return () => {
+      if (startupTimer.current) clearTimeout(startupTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -61,6 +88,7 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
   }, []);
 
   function handlePointerActivity() {
+    if (isStarting) return; // ignore hover/tap while the startup cover is still up
     setShowControls(true);
     scheduleHideControls();
   }
@@ -156,57 +184,70 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
         allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
       />
 
+      {/* Startup cover: hides YouTube/Cloudflare's own branding overlay and
+          the brief re-init flash every embed does right after it loads. */}
       <div
-        className={`absolute inset-x-0 bottom-0 flex items-center gap-3 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-6 transition-opacity duration-300 ${
-          showControls ? 'opacity-100' : 'opacity-0'
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-black transition-opacity duration-500 ${
+          isStarting ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        <button
-          onClick={toggleMute}
-          aria-label={muted ? 'Unmute' : 'Mute'}
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
-        >
-          {muted || volume === 0 ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M11 5L6 9H2v6h4l5 4V5z" />
-              <path d="M23 9l-6 6M17 9l6 6" />
-            </svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M11 5L6 9H2v6h4l5 4V5z" />
-              <path d="M15.5 8.5a5 5 0 010 7M19 5a10 10 0 010 14" />
-            </svg>
-          )}
-        </button>
-
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={muted ? 0 : volume}
-          onChange={(e) => changeVolume(parseInt(e.target.value, 10))}
-          aria-label="Volume"
-          className="h-1 w-24 cursor-pointer accent-white sm:w-32"
-        />
-
-        {muted && <span className="text-xs font-medium text-white/90">Tap to unmute</span>}
-
-        <button
-          onClick={toggleFullscreen}
-          aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-          className="ml-auto flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
-        >
-          {isFullscreen ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 3v3a2 2 0 01-2 2H4M15 3v3a2 2 0 002 2h3M9 21v-3a2 2 0 00-2-2H4M15 21v-3a2 2 0 012-2h3" />
-            </svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M8 3H5a2 2 0 00-2 2v3M21 8V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3M16 21h3a2 2 0 002-2v-3" />
-            </svg>
-          )}
-        </button>
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
       </div>
+
+      {!isStarting && (
+        <div
+          className={`absolute inset-x-0 bottom-0 flex items-center gap-3 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-6 transition-opacity duration-300 ${
+            showControls ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <button
+            onClick={toggleMute}
+            aria-label={muted ? 'Unmute' : 'Mute'}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
+          >
+            {muted || volume === 0 ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                <path d="M23 9l-6 6M17 9l6 6" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                <path d="M15.5 8.5a5 5 0 010 7M19 5a10 10 0 010 14" />
+              </svg>
+            )}
+          </button>
+
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={muted ? 0 : volume}
+            onChange={(e) => changeVolume(parseInt(e.target.value, 10))}
+            aria-label="Volume"
+            className="h-1 w-24 cursor-pointer accent-white sm:w-32"
+          />
+
+          {muted && <span className="text-xs font-medium text-white/90">Tap to unmute</span>}
+
+          <button
+            onClick={toggleFullscreen}
+            aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            className="ml-auto flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
+          >
+            {isFullscreen ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 3v3a2 2 0 01-2 2H4M15 3v3a2 2 0 002 2h3M9 21v-3a2 2 0 00-2-2H4M15 21v-3a2 2 0 012-2h3" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M8 3H5a2 2 0 00-2 2v3M21 8V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3M16 21h3a2 2 0 002-2v-3" />
+              </svg>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
