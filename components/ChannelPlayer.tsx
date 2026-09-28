@@ -61,6 +61,16 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
   const startupFallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cloudflareAttachTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioRetryTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // Cache a single Stream() wrapper instance for this iframe instead of
+  // calling window.Stream(iframe) fresh on every mute/volume command.
+  // Confirmed via DevTools that the real underlying <video> element stayed
+  // muted even after our code logged a "successful" player.muted = false —
+  // the most likely explanation is that each fresh Stream(iframe) call
+  // creates its own wrapper that re-syncs to the iframe's default state
+  // (muted="true", baked into the embed URL), and a later-created
+  // instance's sync could silently stomp an earlier unmute command. Reusing
+  // one instance avoids that entirely.
+  const cloudflarePlayerRef = useRef<any>(null);
 
   const [muted, setMuted] = useState(true);
   const [volume, setVolume] = useState(70);
@@ -169,13 +179,15 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
     }
 
     try {
-      if (typeof (window as any).Stream !== 'function') {
-        console.warn('[ChannelPlayer] applyAudioOnce: window.Stream is not a function yet — SDK script not ready or failed to load', typeof (window as any).Stream);
-        return false;
-      }
-      const player = (window as any).Stream(iframe);
+      // Reuse the single cached player instance from the attach effect
+      // below, rather than calling window.Stream(iframe) again here — a
+      // second/third independent wrapper instance was confirmed (via
+      // DevTools) to silently re-mute the real <video> element shortly
+      // after this function reported success, most likely because each
+      // fresh Stream(iframe) call re-syncs to the iframe's default state.
+      const player = cloudflarePlayerRef.current;
       if (!player) {
-        console.warn('[ChannelPlayer] applyAudioOnce: Stream(iframe) returned nothing');
+        console.warn('[ChannelPlayer] applyAudioOnce: no cached Cloudflare player yet (attach effect hasn\'t succeeded)');
         return false;
       }
       player.muted = isMuted;
@@ -219,6 +231,7 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
       const player = iframe && typeof streamFn === 'function' ? streamFn(iframe) : null;
       if (player && typeof player.addEventListener === 'function') {
         console.log(`[ChannelPlayer] Cloudflare attach: succeeded after ${attempts} attempt(s)`, player);
+        cloudflarePlayerRef.current = player;
         player.addEventListener('playing', () => {
           setIsStarting(false);
           applyAudioOnce();
