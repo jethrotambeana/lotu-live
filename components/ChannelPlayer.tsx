@@ -14,21 +14,24 @@ interface ChannelPlayerProps {
 // the player, before it fades out again (touch: after a tap).
 const CONTROLS_HIDE_DELAY_MS = 2500;
 
-// How long the black "starting up" cover stays over the player after each
-// new video/segment loads. YouTube (and to a lesser extent Cloudflare)
-// embeds show their own branding/title overlay for a moment, and YouTube in
-// particular tends to briefly flash to black once its player JS finishes
-// attaching (the same handshake that lets the mute/volume controls work).
-// Neither can be suppressed at the source, so this cover just hides both
-// behind a clean black screen until playback has settled down.
-const STARTUP_COVER_MS = 3000;
+// Absolute ceiling on how long the "starting up" cover can stay up, in case
+// the real playback-state events below never arrive (script blocked,
+// browser quirk, etc). Under normal conditions the cover comes down as soon
+// as a genuine "now playing" event is seen — this is just a safety net so
+// nobody is ever stuck staring at a black screen indefinitely.
+const STARTUP_COVER_MAX_MS = 8000;
+
+// YouTube's own numeric player states (same values YT.PlayerState uses):
+// -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued.
+const YT_STATE_PLAYING = 1;
 
 export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelPlayerProps) {
   const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const startupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startupFallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cloudflareAttachTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [current, setCurrent] = useState({ key: embedKey, url: embedUrl });
 
@@ -38,27 +41,32 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
 
   const [showControls, setShowControls] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // True whenever the player isn't confirmed to be genuinely playing —
+  // covers the initial YouTube/Cloudflare branding flash AND any later
+  // re-buffer/restart, since it's driven by real state, not a timer.
   const [isStarting, setIsStarting] = useState(true);
 
-  function armStartupCover() {
+  function armStartupFallback() {
     setIsStarting(true);
-    if (startupTimer.current) clearTimeout(startupTimer.current);
-    startupTimer.current = setTimeout(() => setIsStarting(false), STARTUP_COVER_MS);
+    if (startupFallbackTimer.current) clearTimeout(startupFallbackTimer.current);
+    startupFallbackTimer.current = setTimeout(() => setIsStarting(false), STARTUP_COVER_MAX_MS);
   }
 
   useEffect(() => {
     if (embedKey !== current.key) {
       setCurrent({ key: embedKey, url: embedUrl });
-      armStartupCover();
+      armStartupFallback();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [embedKey, embedUrl]);
 
-  // Covers the very first load too, and cleans up the timer on unmount.
+  // Covers the very first load too, and cleans up timers on unmount.
   useEffect(() => {
-    armStartupCover();
+    armStartupFallback();
     return () => {
-      if (startupTimer.current) clearTimeout(startupTimer.current);
+      if (startupFallbackTimer.current) clearTimeout(startupFallbackTimer.current);
+      if (cloudflareAttachTimer.current) clearTimeout(cloudflareAttachTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -81,6 +89,75 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+
+  // --- Real playback-state tracking (drives the startup/re-init cover) ---
+  //
+  // YouTube: with enablejsapi=1 in the embed URL, the iframe broadcasts its
+  // player state to window.parent via postMessage once it sees the parent
+  // is listening — the same lightweight handshake YouTube's own player
+  // library performs internally. No extra script needed for this.
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (provider !== 'youtube') return;
+      if (typeof event.data !== 'string') return;
+      let data: any;
+      try {
+        data = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+      const state =
+        data?.event === 'onStateChange'
+          ? data.info
+          : data?.event === 'infoDelivery'
+          ? data.info?.playerState
+          : undefined;
+      if (typeof state !== 'number') return;
+
+      if (state === YT_STATE_PLAYING) {
+        setIsStarting(false);
+      } else {
+        // Buffering, unstarted, cued, paused, ended — treat all of these as
+        // "not really playing" and keep the cover up. This is what catches
+        // the brief re-init flash even when it happens after playback had
+        // already visibly started.
+        setIsStarting(true);
+      }
+    }
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [provider]);
+
+  // Cloudflare Stream's player object behaves like a normal HTMLMediaElement
+  // and fires real 'playing' / 'waiting' events — attach once the SDK
+  // script has actually finished loading (polls briefly since the script
+  // loads async and may not be ready the instant this component mounts).
+  useEffect(() => {
+    if (provider !== 'cloudflare') return;
+
+    function tryAttach() {
+      const iframe = iframeRef.current;
+      const player = iframe && (window as any).Stream?.(iframe);
+      if (player && typeof player.addEventListener === 'function') {
+        player.addEventListener('playing', () => setIsStarting(false));
+        player.addEventListener('waiting', () => setIsStarting(true));
+        player.addEventListener('pause', () => setIsStarting(true));
+      } else {
+        cloudflareAttachTimer.current = setTimeout(tryAttach, 200);
+      }
+    }
+    tryAttach();
+
+    return () => {
+      if (cloudflareAttachTimer.current) clearTimeout(cloudflareAttachTimer.current);
+    };
+  }, [provider, current.key]);
+
+  // Sends the handshake YouTube's iframe needs in order to start
+  // broadcasting onStateChange/infoDelivery messages to this window.
+  function sendYouTubeListeningHandshake() {
+    iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: current.key }), '*');
+  }
 
   const scheduleHideControls = useCallback(() => {
     if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
@@ -132,6 +209,13 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
   }, [provider]);
 
   function handleIframeLoad() {
+    if (provider === 'youtube') {
+      sendYouTubeListeningHandshake();
+      // A second handshake shortly after — the first one can arrive before
+      // the YouTube player has fully initialized and get missed.
+      setTimeout(sendYouTubeListeningHandshake, 500);
+    }
+
     // Re-applies the viewer's existing mute/volume choice to every new
     // segment/live cutover — so switching videos never silently re-mutes
     // or resets the volume the viewer already set.
@@ -184,8 +268,9 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
         allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
       />
 
-      {/* Startup cover: hides YouTube/Cloudflare's own branding overlay and
-          the brief re-init flash every embed does right after it loads. */}
+      {/* Startup/re-init cover: hides YouTube/Cloudflare's own branding
+          overlay and any black re-init flash, driven by real playback
+          state rather than a guessed timer (see the two effects above). */}
       <div
         aria-hidden="true"
         className={`pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-black transition-opacity duration-500 ${
