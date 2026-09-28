@@ -7,6 +7,20 @@ interface ChannelPlayerProps {
   embedKey: string; // stable per actual segment occurrence — only this changing should ever reload the player
   embedUrl: string;
   provider: 'youtube' | 'cloudflare';
+  // The viewer's current mute/volume choice, owned by the parent
+  // (ChannelClient) rather than this component, specifically so it
+  // survives a segment/live cutover. This component remounts fresh on
+  // every embedKey change (see the `key={embedKey}` the parent uses) —
+  // needed so the new video's iframe actually loads — but that means any
+  // state kept only inside this component (an old muted/volume useState)
+  // would reset to the default on every cutover too. Reading the starting
+  // point from these props instead lets the new video pick up right where
+  // the last one left off.
+  initialMuted: boolean;
+  initialVolume: number;
+  // Called whenever the viewer changes mute/volume, so the parent can
+  // remember it for the next cutover.
+  onAudioChange: (muted: boolean, volume: number) => void;
 }
 
 // How long the control bar stays visible after the mouse stops moving over
@@ -32,16 +46,18 @@ const AUDIO_RETRY_DELAYS_MS = [0, 300, 800, 1500, 3000];
 // -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued.
 const YT_STATE_PLAYING = 1;
 
-// Diagnostic build: audio still isn't coming through for Cloudflare-sourced
-// content after two targeted fixes, which points at something more basic
-// than timing — e.g. window.Stream never actually becoming available at
-// all. These logs (all prefixed "[ChannelPlayer]") make that visible in
-// the browser console instead of failing silently, so the real cause can
-// be pinned down instead of guessed at a third time. Safe to remove once
-// the cause is confirmed.
-const CLOUDFLARE_ATTACH_MAX_ATTEMPTS = 50; // 50 * 200ms = ~10s before giving up and logging an error
+// How many times to poll for the Cloudflare Stream SDK's player object
+// before giving up and logging an error (rather than retrying forever).
+const CLOUDFLARE_ATTACH_MAX_ATTEMPTS = 50; // 50 * 200ms = ~10s
 
-export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelPlayerProps) {
+export default function ChannelPlayer({
+  embedKey,
+  embedUrl,
+  provider,
+  initialMuted,
+  initialVolume,
+  onAudioChange,
+}: ChannelPlayerProps) {
   // Snapshot the URL once, at mount, and never let a later prop update
   // touch it. The parent recomputes embedUrl on every ~20s poll — for a
   // VOD segment its `start`/`startTime` query param is "how far into the
@@ -72,9 +88,9 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
   // one instance avoids that entirely.
   const cloudflarePlayerRef = useRef<any>(null);
 
-  const [muted, setMuted] = useState(true);
-  const [volume, setVolume] = useState(70);
-  const audioPrefs = useRef({ muted: true, volume: 70 });
+  const [muted, setMuted] = useState(initialMuted);
+  const [volume, setVolume] = useState(initialVolume);
+  const audioPrefs = useRef({ muted: initialMuted, volume: initialVolume });
 
   const [showControls, setShowControls] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -192,7 +208,6 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
       }
       player.muted = isMuted;
       player.volume = vol / 100;
-      console.log('[ChannelPlayer] applyAudioOnce: set player.muted =', isMuted, 'player.volume =', vol / 100, '— read back:', player.muted, player.volume);
       return true;
     } catch (err) {
       console.error('[ChannelPlayer] applyAudioOnce: Cloudflare audio control threw:', err);
@@ -222,7 +237,6 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
     if (provider !== 'cloudflare') return;
 
     let attempts = 0;
-    console.log('[ChannelPlayer] Cloudflare attach: starting, window.Stream is currently', typeof (window as any).Stream);
 
     function tryAttach() {
       attempts += 1;
@@ -230,7 +244,6 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
       const streamFn = (window as any).Stream;
       const player = iframe && typeof streamFn === 'function' ? streamFn(iframe) : null;
       if (player && typeof player.addEventListener === 'function') {
-        console.log(`[ChannelPlayer] Cloudflare attach: succeeded after ${attempts} attempt(s)`, player);
         cloudflarePlayerRef.current = player;
         player.addEventListener('playing', () => {
           setIsStarting(false);
@@ -286,9 +299,12 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
       setTimeout(sendYouTubeListeningHandshake, 500);
     }
     // Re-applies the viewer's existing mute/volume choice on every fresh
-    // load — relevant when this component remounts for a new segment/live
-    // stream (see the `key={embedKey}` on the parent's usage) and the
-    // viewer had already unmuted before the switch.
+    // load — including automatically, with no click, right after a
+    // segment/live cutover remounts this component with initialMuted/
+    // initialVolume carried over from the parent. The embed URL always
+    // starts muted (needed for autoplay to be allowed to begin at all),
+    // so an unmuted carry-over still needs this explicit re-apply to
+    // actually turn sound on for the new video.
     if (!audioPrefs.current.muted) {
       applyAudioWithRetries();
     }
@@ -298,7 +314,7 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
     const next = !audioPrefs.current.muted;
     audioPrefs.current.muted = next;
     setMuted(next);
-    console.log('[ChannelPlayer] toggleMute clicked — muted is now', next, 'provider:', provider);
+    onAudioChange(next, audioPrefs.current.volume);
     applyAudioWithRetries();
   }
 
@@ -309,6 +325,7 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
       audioPrefs.current.muted = false;
       setMuted(false);
     }
+    onAudioChange(audioPrefs.current.muted, value);
     applyAudioWithRetries();
   }
 
@@ -332,8 +349,7 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
         <Script
           src="https://embed.cloudflarestream.com/embed/sdk.latest.js"
           strategy="afterInteractive"
-          onLoad={() => console.log('[ChannelPlayer] Cloudflare Stream SDK script: onLoad fired, window.Stream is now', typeof (window as any).Stream)}
-          onError={(err) => console.error('[ChannelPlayer] Cloudflare Stream SDK script: FAILED TO LOAD', err)}
+          onError={(err) => console.error('[ChannelPlayer] Cloudflare Stream SDK script failed to load:', err)}
         />
       )}
 

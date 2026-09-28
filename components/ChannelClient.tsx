@@ -9,6 +9,15 @@ const POLL_INTERVAL_MS = 20000;
 export default function ChannelClient({ initial }: { initial: ChannelState }) {
   const [state, setState] = useState<ChannelState>(initial);
 
+  // Owned here, not inside ChannelPlayer, specifically so it survives a
+  // segment/live cutover. ChannelPlayer remounts fresh (key={state.embedKey})
+  // whenever the video actually changes — needed so the new video's iframe
+  // loads — but that means state kept only inside ChannelPlayer would reset
+  // to muted/default-volume on every cutover. Keeping it up here and handing
+  // it down as the new instance's starting point lets a viewer who unmuted
+  // stay unmuted across the whole channel, not just for one video.
+  const [audioPrefs, setAudioPrefs] = useState({ muted: true, volume: 70 });
+
   // Polls a small JSON endpoint instead of calling router.refresh().
   // router.refresh() re-runs the whole Server Component tree for this
   // route, and was found to occasionally cause the embedded video iframe
@@ -66,6 +75,9 @@ export default function ChannelClient({ initial }: { initial: ChannelState }) {
             embedKey={state.embedKey}
             embedUrl={state.embedUrl}
             provider={state.provider}
+            initialMuted={audioPrefs.muted}
+            initialVolume={audioPrefs.volume}
+            onAudioChange={(muted, volume) => setAudioPrefs({ muted, volume })}
           />
         </div>
         <p className="mt-3 text-sm text-slate-500">
@@ -87,6 +99,9 @@ export default function ChannelClient({ initial }: { initial: ChannelState }) {
           embedKey={state.embedKey}
           embedUrl={state.embedUrl}
           provider={state.provider}
+          initialMuted={audioPrefs.muted}
+          initialVolume={audioPrefs.volume}
+          onAudioChange={(muted, volume) => setAudioPrefs({ muted, volume })}
         />
       </div>
       <p className="mt-3 text-sm text-slate-500">
