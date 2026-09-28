@@ -134,58 +134,11 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
     return () => window.removeEventListener('message', handleMessage);
   }, [provider]);
 
-  // Cloudflare Stream's player object behaves like a normal HTMLMediaElement
-  // and fires real 'playing' / 'waiting' events — attach once the SDK
-  // script has actually finished loading (polls briefly since the script
-  // loads async and may not be ready the instant this component mounts).
-  useEffect(() => {
-    if (provider !== 'cloudflare') return;
-
-    function tryAttach() {
-      const iframe = iframeRef.current;
-      const player = iframe && (window as any).Stream?.(iframe);
-      if (player && typeof player.addEventListener === 'function') {
-        player.addEventListener('playing', () => setIsStarting(false));
-        player.addEventListener('waiting', () => setIsStarting(true));
-        player.addEventListener('pause', () => setIsStarting(true));
-      } else {
-        cloudflareAttachTimer.current = setTimeout(tryAttach, 200);
-      }
-    }
-    tryAttach();
-
-    return () => {
-      if (cloudflareAttachTimer.current) clearTimeout(cloudflareAttachTimer.current);
-    };
-  }, [provider]);
-
   // Sends the handshake YouTube's iframe needs in order to start
   // broadcasting onStateChange/infoDelivery messages to this window.
   function sendYouTubeListeningHandshake() {
     iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: embedKey }), '*');
   }
-
-  const scheduleHideControls = useCallback(() => {
-    if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
-    hideControlsTimer.current = setTimeout(() => setShowControls(false), CONTROLS_HIDE_DELAY_MS);
-  }, []);
-
-  function handlePointerActivity() {
-    if (isStarting) return; // ignore hover/tap while the startup cover is still up
-    setShowControls(true);
-    scheduleHideControls();
-  }
-
-  function handleMouseLeave() {
-    if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
-    setShowControls(false);
-  }
-
-  useEffect(() => {
-    return () => {
-      if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
-    };
-  }, []);
 
   const applyAudioOnce = useCallback(() => {
     const iframe = iframeRef.current;
@@ -225,6 +178,63 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
     audioRetryTimers.current.forEach(clearTimeout);
     audioRetryTimers.current = AUDIO_RETRY_DELAYS_MS.map((delay) => setTimeout(applyAudioOnce, delay));
   }, [applyAudioOnce]);
+
+  // Cloudflare Stream's player object behaves like a normal HTMLMediaElement
+  // and fires real 'playing' / 'waiting' events — attach once the SDK
+  // script has actually finished loading. This polls briefly because the
+  // SDK script loads async (next/script) and, on a slower connection, can
+  // easily still be loading well after this component has mounted — and
+  // since we now only load the iframe once (fix6), there's no second
+  // reload to give a stray unmute click another chance to land. So the
+  // moment the player object actually becomes available, we proactively
+  // re-apply whatever mute/volume the viewer has already asked for, rather
+  // than only reacting to a click that may have arrived too early.
+  useEffect(() => {
+    if (provider !== 'cloudflare') return;
+
+    function tryAttach() {
+      const iframe = iframeRef.current;
+      const player = iframe && (window as any).Stream?.(iframe);
+      if (player && typeof player.addEventListener === 'function') {
+        player.addEventListener('playing', () => {
+          setIsStarting(false);
+          applyAudioOnce();
+        });
+        player.addEventListener('waiting', () => setIsStarting(true));
+        player.addEventListener('pause', () => setIsStarting(true));
+        applyAudioWithRetries();
+      } else {
+        cloudflareAttachTimer.current = setTimeout(tryAttach, 200);
+      }
+    }
+    tryAttach();
+
+    return () => {
+      if (cloudflareAttachTimer.current) clearTimeout(cloudflareAttachTimer.current);
+    };
+  }, [provider, applyAudioOnce, applyAudioWithRetries]);
+
+  const scheduleHideControls = useCallback(() => {
+    if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+    hideControlsTimer.current = setTimeout(() => setShowControls(false), CONTROLS_HIDE_DELAY_MS);
+  }, []);
+
+  function handlePointerActivity() {
+    if (isStarting) return; // ignore hover/tap while the startup cover is still up
+    setShowControls(true);
+    scheduleHideControls();
+  }
+
+  function handleMouseLeave() {
+    if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+    setShowControls(false);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+    };
+  }, []);
 
   function handleIframeLoad() {
     if (provider === 'youtube') {
