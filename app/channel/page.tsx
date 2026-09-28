@@ -31,6 +31,10 @@ function extractCloudflareId(input: string): string {
 // this should feel like tuning into a channel, not watching an embedded
 // YouTube/Cloudflare video with a visible player chrome and related-video
 // links out of the site.
+//
+// enablejsapi=1 (YouTube) is required for ChannelPlayer's mute/unmute and
+// volume controls to work at all — without it, the postMessage commands
+// it sends are silently ignored by the iframe.
 function buildEmbedUrl(provider: string, providerVideoId: string, startSeconds: number, isLive: boolean): string {
   if (provider === 'youtube') {
     const id = extractYouTubeId(providerVideoId);
@@ -40,6 +44,7 @@ function buildEmbedUrl(provider: string, providerVideoId: string, startSeconds: 
       controls: '0',
       modestbranding: '1',
       rel: '0',
+      enablejsapi: '1',
     });
     if (!isLive) params.set('start', String(startSeconds));
     return `https://www.youtube.com/embed/${id}?${params.toString()}`;
@@ -89,7 +94,13 @@ export default async function ChannelPage() {
           <h1 className="text-xl font-bold">{liveStream.name}</h1>
         </div>
         <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
-          {embedUrl && <ChannelPlayer embedKey={`live-${liveStream.id}`} embedUrl={embedUrl} />}
+          {embedUrl && (
+            <ChannelPlayer
+              embedKey={`live-${liveStream.id}`}
+              embedUrl={embedUrl}
+              provider={liveStream.provider as 'youtube' | 'cloudflare'}
+            />
+          )}
         </div>
         <p className="mt-3 text-sm text-slate-500">
           The LOTU.Live Channel cuts to any live broadcast automatically — when this one ends,
@@ -140,7 +151,13 @@ export default async function ChannelPage() {
       <h1 className="mb-1 text-2xl font-bold">LOTU.Live Channel</h1>
       <p className="mb-4 text-slate-500">Now playing: {segment.video.title}</p>
       <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
-        {embedUrl && <ChannelPlayer embedKey={embedKey} embedUrl={embedUrl} />}
+        {embedUrl && (
+          <ChannelPlayer
+            embedKey={embedKey}
+            embedUrl={embedUrl}
+            provider={segment.video.provider as 'youtube' | 'cloudflare'}
+          />
+        )}
       </div>
       <p className="mt-3 text-sm text-slate-500">
         Playing continuously from the video library — the channel automatically switches to any
