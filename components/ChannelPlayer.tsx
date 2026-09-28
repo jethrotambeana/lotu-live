@@ -10,16 +10,24 @@ interface ChannelPlayerProps {
   provider: 'youtube' | 'cloudflare';
 }
 
+// How long the control bar stays visible after the mouse stops moving over
+// the player, before it fades out again (touch: after a tap).
+const CONTROLS_HIDE_DELAY_MS = 2500;
+
 export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelPlayerProps) {
   const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [current, setCurrent] = useState({ key: embedKey, url: embedUrl });
 
   const [muted, setMuted] = useState(true);
   const [volume, setVolume] = useState(70);
   const audioPrefs = useRef({ muted: true, volume: 70 });
+
+  const [showControls, setShowControls] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     if (embedKey !== current.key) {
@@ -34,6 +42,39 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
     }, 20000);
     return () => clearInterval(interval);
   }, [router]);
+
+  // Tracks real fullscreen state (rather than assuming the button's own
+  // click toggled it) so the icon/label stay correct even if the viewer
+  // exits fullscreen via Escape or a mobile back gesture instead of the
+  // button itself.
+  useEffect(() => {
+    function handleFullscreenChange() {
+      setIsFullscreen(document.fullscreenElement === containerRef.current);
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const scheduleHideControls = useCallback(() => {
+    if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+    hideControlsTimer.current = setTimeout(() => setShowControls(false), CONTROLS_HIDE_DELAY_MS);
+  }, []);
+
+  function handlePointerActivity() {
+    setShowControls(true);
+    scheduleHideControls();
+  }
+
+  function handleMouseLeave() {
+    if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+    setShowControls(false);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+    };
+  }, []);
 
   const applyAudio = useCallback(() => {
     const iframe = iframeRef.current;
@@ -63,6 +104,9 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
   }, [provider]);
 
   function handleIframeLoad() {
+    // Re-applies the viewer's existing mute/volume choice to every new
+    // segment/live cutover — so switching videos never silently re-mutes
+    // or resets the volume the viewer already set.
     if (audioPrefs.current.muted) return;
     [500, 1500, 3000].forEach((delay) => setTimeout(applyAudio, delay));
   }
@@ -84,12 +128,22 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
     applyAudio();
   }
 
-  function goFullscreen() {
-    containerRef.current?.requestFullscreen?.();
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+    } else {
+      containerRef.current?.requestFullscreen?.();
+    }
   }
 
   return (
-    <div ref={containerRef} className="relative h-full w-full bg-black">
+    <div
+      ref={containerRef}
+      className="group relative h-full w-full bg-black"
+      onMouseMove={handlePointerActivity}
+      onMouseLeave={handleMouseLeave}
+      onClick={handlePointerActivity}
+    >
       {provider === 'cloudflare' && (
         <Script src="https://embed.cloudflarestream.com/embed/sdk.latest.js" strategy="afterInteractive" />
       )}
@@ -102,7 +156,11 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
         allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
       />
 
-      <div className="absolute inset-x-0 bottom-0 flex items-center gap-3 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-6">
+      <div
+        className={`absolute inset-x-0 bottom-0 flex items-center gap-3 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-6 transition-opacity duration-300 ${
+          showControls ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
         <button
           onClick={toggleMute}
           aria-label={muted ? 'Unmute' : 'Mute'}
@@ -134,13 +192,19 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
         {muted && <span className="text-xs font-medium text-white/90">Tap to unmute</span>}
 
         <button
-          onClick={goFullscreen}
-          aria-label="Fullscreen"
+          onClick={toggleFullscreen}
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
           className="ml-auto flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M8 3H5a2 2 0 00-2 2v3M21 8V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3M16 21h3a2 2 0 002-2v-3" />
-          </svg>
+          {isFullscreen ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 3v3a2 2 0 01-2 2H4M15 3v3a2 2 0 002 2h3M9 21v-3a2 2 0 00-2-2H4M15 21v-3a2 2 0 012-2h3" />
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M8 3H5a2 2 0 00-2 2v3M21 8V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3M16 21h3a2 2 0 002-2v-3" />
+            </svg>
+          )}
         </button>
       </div>
     </div>
