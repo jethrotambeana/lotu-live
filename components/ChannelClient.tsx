@@ -46,8 +46,8 @@ export default function ChannelClient({ initial }: { initial: ChannelState }) {
       <div className="mx-auto max-w-5xl px-4 py-8">
         <h1 className="mb-4 text-2xl font-bold">LOTU.Live Channel</h1>
         <p className="text-slate-500">
-          Nothing's ready to play yet — videos need a duration set before they can join the
-          rotation. Admin → Videos → "Backfill Missing Durations" catches up existing ones.
+          Nothing's ready to play yet — the channel playlist is empty. Admin → Channel to add
+          videos to it.
         </p>
       </div>
     );
@@ -91,7 +91,14 @@ export default function ChannelClient({ initial }: { initial: ChannelState }) {
   // state.mode === 'vod'
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="mb-1 text-2xl font-bold">LOTU.Live Channel</h1>
+      <div className="mb-1 flex items-center gap-2">
+        {state.forced && (
+          <span className="rounded bg-amber-500 px-2 py-0.5 text-xs font-semibold uppercase text-white">
+            Playing now
+          </span>
+        )}
+        <h1 className="text-2xl font-bold">LOTU.Live Channel</h1>
+      </div>
       <p className="mb-4 text-slate-500">Now playing: {state.title}</p>
       <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
         <ChannelPlayer
@@ -105,8 +112,9 @@ export default function ChannelClient({ initial }: { initial: ChannelState }) {
         />
       </div>
       <p className="mt-3 text-sm text-slate-500">
-        Playing continuously from the video library — the channel automatically switches to any
-        church's livestream the moment one begins.
+        {state.forced
+          ? "An admin picked this to play right now — the channel will return to its regular playlist once it finishes."
+          : 'Playing continuously from the channel playlist — the channel automatically switches to any church\'s livestream the moment one begins.'}
       </p>
       <a href={`/video/${state.videoSlug}`} className="mt-2 inline-block text-sm text-sky-600 underline">
         View this video's own page →

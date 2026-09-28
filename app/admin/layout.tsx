@@ -43,6 +43,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: '/admin/events', label: 'Events', badge: counts.events },
     { href: '/admin/livestreams', label: 'Livestreams' },
     { href: '/admin/videos', label: 'Videos', badge: counts.videos },
+    { href: '/admin/channel', label: 'Channel' },
     { href: '/admin/categories', label: 'Categories' },
     { href: '/admin/series', label: 'Series' },
     { href: '/admin/messages', label: 'Messages', badge: counts.messages },
