@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 interface ShareButtonProps {
-  url: string;
+  url?: string;
   title: string;
   className?: string;
 }
@@ -12,13 +12,21 @@ interface ShareButtonProps {
 // some desktop ones) — this is the "Share" a person expects on a phone,
 // offering WhatsApp/Messages/etc. directly. Falls back to copying the
 // link to the clipboard everywhere else (most desktop browsers).
+//
+// `url` is optional: pass it when the link should be a fixed address
+// (e.g. the Channel page, which shares a hardcoded production URL even
+// when tested from a preview domain). Omit it to share/copy whatever
+// page the button is actually rendered on — resolved at click-time via
+// window.location.href, matching this component's original behavior.
 export default function ShareButton({ url, title, className }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
 
   async function handleShare() {
+    const shareUrl = url ?? (typeof window !== 'undefined' ? window.location.href : '');
+
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
-        await navigator.share({ title, url });
+        await navigator.share({ title, url: shareUrl });
         return;
       } catch (err) {
         // AbortError just means the person closed the native share sheet
@@ -29,7 +37,7 @@ export default function ShareButton({ url, title, className }: ShareButtonProps)
     }
 
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
