@@ -2,9 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import ChannelPlayer from '@/components/ChannelPlayer';
+import ShareButton from '@/components/ShareButton';
 import type { ChannelState } from '@/lib/channelEmbed';
 
 const POLL_INTERVAL_MS = 20000;
+
+// Hardcoded rather than derived from window.location: this component
+// renders on the server first (part of the initial page render, before
+// hydration), where window doesn't exist, so reading window.location here
+// would either crash or mismatch between server and client output. The
+// production domain is fixed, so a constant is simpler and also
+// guarantees the shared link is always the real lotu.live URL rather than
+// a preview/staging domain the page happened to be loaded from.
+const CHANNEL_URL = 'https://lotu.live/channel';
 
 export default function ChannelClient({ initial }: { initial: ChannelState }) {
   const [state, setState] = useState<ChannelState>(initial);
@@ -56,15 +66,18 @@ export default function ChannelClient({ initial }: { initial: ChannelState }) {
   if (state.mode === 'live') {
     return (
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <div className="mb-4 flex items-center gap-2">
-          <span className="flex items-center gap-1.5 rounded bg-red-600 px-2 py-1 text-xs font-semibold text-white">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 rounded bg-red-600 px-2 py-1 text-xs font-semibold text-white">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+              </span>
+              LIVE NOW
             </span>
-            LIVE NOW
-          </span>
-          <h1 className="text-xl font-bold">{state.title}</h1>
+            <h1 className="text-xl font-bold">{state.title}</h1>
+          </div>
+          <ShareButton url={CHANNEL_URL} title="LOTU.Live Channel" />
         </div>
         <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
           {/* key={state.embedKey} guarantees React treats a genuinely new
@@ -91,13 +104,16 @@ export default function ChannelClient({ initial }: { initial: ChannelState }) {
   // state.mode === 'vod'
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <div className="mb-1 flex items-center gap-2">
-        {state.forced && (
-          <span className="rounded bg-amber-500 px-2 py-0.5 text-xs font-semibold uppercase text-white">
-            Playing now
-          </span>
-        )}
-        <h1 className="text-2xl font-bold">LOTU.Live Channel</h1>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {state.forced && (
+            <span className="rounded bg-amber-500 px-2 py-0.5 text-xs font-semibold uppercase text-white">
+              Playing now
+            </span>
+          )}
+          <h1 className="text-2xl font-bold">LOTU.Live Channel</h1>
+        </div>
+        <ShareButton url={CHANNEL_URL} title="LOTU.Live Channel" />
       </div>
       <p className="mb-4 text-slate-500">Now playing: {state.title}</p>
       <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
