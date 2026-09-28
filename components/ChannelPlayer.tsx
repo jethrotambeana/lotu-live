@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Script from 'next/script';
 
 interface ChannelPlayerProps {
@@ -21,19 +20,25 @@ const CONTROLS_HIDE_DELAY_MS = 2500;
 // nobody is ever stuck staring at a black screen indefinitely.
 const STARTUP_COVER_MAX_MS = 8000;
 
+// Retries for applying the viewer's mute/volume choice — both providers'
+// control APIs (YouTube's postMessage handshake, Cloudflare's Stream SDK
+// script) can still be finishing initialization at the exact moment a
+// viewer clicks unmute or drags the slider, and a single attempt can
+// silently do nothing if that happens. Retrying a few times over ~2s
+// covers that without needing to detect "is it ready yet" precisely.
+const AUDIO_RETRY_DELAYS_MS = [0, 300, 800, 1500, 3000];
+
 // YouTube's own numeric player states (same values YT.PlayerState uses):
 // -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued.
 const YT_STATE_PLAYING = 1;
 
 export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelPlayerProps) {
-  const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startupFallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cloudflareAttachTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const [current, setCurrent] = useState({ key: embedKey, url: embedUrl });
+  const audioRetryTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const [muted, setMuted] = useState(true);
   const [volume, setVolume] = useState(70);
@@ -47,6 +52,11 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
   // re-buffer/restart, since it's driven by real state, not a timer.
   const [isStarting, setIsStarting] = useState(true);
 
+  // This component is now given a fresh `key={embedKey}` by its parent
+  // (ChannelClient) whenever the segment/live stream actually changes, so
+  // it fully remounts at that point — there's no longer any need to track
+  // "did embedKey change" internally, and no risk of a stale src lingering.
+
   function armStartupFallback() {
     setIsStarting(true);
     if (startupFallbackTimer.current) clearTimeout(startupFallbackTimer.current);
@@ -54,29 +64,14 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
   }
 
   useEffect(() => {
-    if (embedKey !== current.key) {
-      setCurrent({ key: embedKey, url: embedUrl });
-      armStartupFallback();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [embedKey, embedUrl]);
-
-  // Covers the very first load too, and cleans up timers on unmount.
-  useEffect(() => {
     armStartupFallback();
     return () => {
       if (startupFallbackTimer.current) clearTimeout(startupFallbackTimer.current);
       if (cloudflareAttachTimer.current) clearTimeout(cloudflareAttachTimer.current);
+      audioRetryTimers.current.forEach(clearTimeout);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      router.refresh();
-    }, 20000);
-    return () => clearInterval(interval);
-  }, [router]);
 
   // Tracks real fullscreen state (rather than assuming the button's own
   // click toggled it) so the icon/label stay correct even if the viewer
@@ -118,9 +113,7 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
         setIsStarting(false);
       } else {
         // Buffering, unstarted, cued, paused, ended — treat all of these as
-        // "not really playing" and keep the cover up. This is what catches
-        // the brief re-init flash even when it happens after playback had
-        // already visibly started.
+        // "not really playing" and keep the cover up.
         setIsStarting(true);
       }
     }
@@ -151,12 +144,12 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
     return () => {
       if (cloudflareAttachTimer.current) clearTimeout(cloudflareAttachTimer.current);
     };
-  }, [provider, current.key]);
+  }, [provider]);
 
   // Sends the handshake YouTube's iframe needs in order to start
   // broadcasting onStateChange/infoDelivery messages to this window.
   function sendYouTubeListeningHandshake() {
-    iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: current.key }), '*');
+    iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: embedKey }), '*');
   }
 
   const scheduleHideControls = useCallback(() => {
@@ -181,9 +174,9 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
     };
   }, []);
 
-  const applyAudio = useCallback(() => {
+  const applyAudioOnce = useCallback(() => {
     const iframe = iframeRef.current;
-    if (!iframe) return;
+    if (!iframe) return false;
     const { muted: isMuted, volume: vol } = audioPrefs.current;
 
     if (provider === 'youtube') {
@@ -195,39 +188,50 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
         send('unMute');
         send('setVolume', [vol]);
       }
-    } else {
-      try {
-        const player = (window as any).Stream?.(iframe);
-        if (player) {
-          player.muted = isMuted;
-          player.volume = vol / 100;
-        }
-      } catch (err) {
-        console.error('ChannelPlayer: Cloudflare audio control failed:', err);
-      }
+      // No reliable synchronous confirmation that this landed — the retry
+      // schedule below covers that instead of trying to detect success here.
+      return true;
+    }
+
+    try {
+      const player = (window as any).Stream?.(iframe);
+      if (!player) return false;
+      player.muted = isMuted;
+      player.volume = vol / 100;
+      return true;
+    } catch (err) {
+      console.error('ChannelPlayer: Cloudflare audio control failed:', err);
+      return false;
     }
   }, [provider]);
+
+  // Fires applyAudioOnce() immediately and again on a short retry schedule,
+  // so a click that lands before the provider's control API has finished
+  // initializing still ends up applied instead of silently doing nothing.
+  const applyAudioWithRetries = useCallback(() => {
+    audioRetryTimers.current.forEach(clearTimeout);
+    audioRetryTimers.current = AUDIO_RETRY_DELAYS_MS.map((delay) => setTimeout(applyAudioOnce, delay));
+  }, [applyAudioOnce]);
 
   function handleIframeLoad() {
     if (provider === 'youtube') {
       sendYouTubeListeningHandshake();
-      // A second handshake shortly after — the first one can arrive before
-      // the YouTube player has fully initialized and get missed.
       setTimeout(sendYouTubeListeningHandshake, 500);
     }
-
-    // Re-applies the viewer's existing mute/volume choice to every new
-    // segment/live cutover — so switching videos never silently re-mutes
-    // or resets the volume the viewer already set.
-    if (audioPrefs.current.muted) return;
-    [500, 1500, 3000].forEach((delay) => setTimeout(applyAudio, delay));
+    // Re-applies the viewer's existing mute/volume choice on every fresh
+    // load — relevant when this component remounts for a new segment/live
+    // stream (see the `key={embedKey}` on the parent's usage) and the
+    // viewer had already unmuted before the switch.
+    if (!audioPrefs.current.muted) {
+      applyAudioWithRetries();
+    }
   }
 
   function toggleMute() {
     const next = !audioPrefs.current.muted;
     audioPrefs.current.muted = next;
     setMuted(next);
-    applyAudio();
+    applyAudioWithRetries();
   }
 
   function changeVolume(value: number) {
@@ -237,7 +241,7 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
       audioPrefs.current.muted = false;
       setMuted(false);
     }
-    applyAudio();
+    applyAudioWithRetries();
   }
 
   function toggleFullscreen() {
@@ -262,7 +266,7 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
 
       <iframe
         ref={iframeRef}
-        src={current.url}
+        src={embedUrl}
         onLoad={handleIframeLoad}
         className="pointer-events-none h-full w-full"
         allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
@@ -270,7 +274,7 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
 
       {/* Startup/re-init cover: hides YouTube/Cloudflare's own branding
           overlay and any black re-init flash, driven by real playback
-          state rather than a guessed timer (see the two effects above). */}
+          state rather than a guessed timer. */}
       <div
         aria-hidden="true"
         className={`pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-black transition-opacity duration-500 ${
