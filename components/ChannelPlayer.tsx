@@ -32,6 +32,15 @@ const AUDIO_RETRY_DELAYS_MS = [0, 300, 800, 1500, 3000];
 // -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued.
 const YT_STATE_PLAYING = 1;
 
+// Diagnostic build: audio still isn't coming through for Cloudflare-sourced
+// content after two targeted fixes, which points at something more basic
+// than timing — e.g. window.Stream never actually becoming available at
+// all. These logs (all prefixed "[ChannelPlayer]") make that visible in
+// the browser console instead of failing silently, so the real cause can
+// be pinned down instead of guessed at a third time. Safe to remove once
+// the cause is confirmed.
+const CLOUDFLARE_ATTACH_MAX_ATTEMPTS = 50; // 50 * 200ms = ~10s before giving up and logging an error
+
 export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelPlayerProps) {
   // Snapshot the URL once, at mount, and never let a later prop update
   // touch it. The parent recomputes embedUrl on every ~20s poll — for a
@@ -160,13 +169,21 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
     }
 
     try {
-      const player = (window as any).Stream?.(iframe);
-      if (!player) return false;
+      if (typeof (window as any).Stream !== 'function') {
+        console.warn('[ChannelPlayer] applyAudioOnce: window.Stream is not a function yet — SDK script not ready or failed to load', typeof (window as any).Stream);
+        return false;
+      }
+      const player = (window as any).Stream(iframe);
+      if (!player) {
+        console.warn('[ChannelPlayer] applyAudioOnce: Stream(iframe) returned nothing');
+        return false;
+      }
       player.muted = isMuted;
       player.volume = vol / 100;
+      console.log('[ChannelPlayer] applyAudioOnce: set player.muted =', isMuted, 'player.volume =', vol / 100, '— read back:', player.muted, player.volume);
       return true;
     } catch (err) {
-      console.error('ChannelPlayer: Cloudflare audio control failed:', err);
+      console.error('[ChannelPlayer] applyAudioOnce: Cloudflare audio control threw:', err);
       return false;
     }
   }, [provider]);
@@ -192,10 +209,16 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
   useEffect(() => {
     if (provider !== 'cloudflare') return;
 
+    let attempts = 0;
+    console.log('[ChannelPlayer] Cloudflare attach: starting, window.Stream is currently', typeof (window as any).Stream);
+
     function tryAttach() {
+      attempts += 1;
       const iframe = iframeRef.current;
-      const player = iframe && (window as any).Stream?.(iframe);
+      const streamFn = (window as any).Stream;
+      const player = iframe && typeof streamFn === 'function' ? streamFn(iframe) : null;
       if (player && typeof player.addEventListener === 'function') {
+        console.log(`[ChannelPlayer] Cloudflare attach: succeeded after ${attempts} attempt(s)`, player);
         player.addEventListener('playing', () => {
           setIsStarting(false);
           applyAudioOnce();
@@ -203,6 +226,14 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
         player.addEventListener('waiting', () => setIsStarting(true));
         player.addEventListener('pause', () => setIsStarting(true));
         applyAudioWithRetries();
+      } else if (attempts >= CLOUDFLARE_ATTACH_MAX_ATTEMPTS) {
+        console.error(
+          '[ChannelPlayer] Cloudflare attach: GAVE UP after',
+          attempts,
+          `attempts (~${(attempts * 200) / 1000}s). window.Stream is`,
+          typeof (window as any).Stream,
+          '— the SDK script likely failed to load or was blocked. Check the Network tab for a failed/blocked request to embed.cloudflarestream.com/embed/sdk.latest.js, and the Console for any CSP or ad-blocker errors.'
+        );
       } else {
         cloudflareAttachTimer.current = setTimeout(tryAttach, 200);
       }
@@ -254,6 +285,7 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
     const next = !audioPrefs.current.muted;
     audioPrefs.current.muted = next;
     setMuted(next);
+    console.log('[ChannelPlayer] toggleMute clicked — muted is now', next, 'provider:', provider);
     applyAudioWithRetries();
   }
 
@@ -284,7 +316,12 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
       onClick={handlePointerActivity}
     >
       {provider === 'cloudflare' && (
-        <Script src="https://embed.cloudflarestream.com/embed/sdk.latest.js" strategy="afterInteractive" />
+        <Script
+          src="https://embed.cloudflarestream.com/embed/sdk.latest.js"
+          strategy="afterInteractive"
+          onLoad={() => console.log('[ChannelPlayer] Cloudflare Stream SDK script: onLoad fired, window.Stream is now', typeof (window as any).Stream)}
+          onError={(err) => console.error('[ChannelPlayer] Cloudflare Stream SDK script: FAILED TO LOAD', err)}
+        />
       )}
 
       <iframe
