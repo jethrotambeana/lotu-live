@@ -33,6 +33,19 @@ const AUDIO_RETRY_DELAYS_MS = [0, 300, 800, 1500, 3000];
 const YT_STATE_PLAYING = 1;
 
 export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelPlayerProps) {
+  // Snapshot the URL once, at mount, and never let a later prop update
+  // touch it. The parent recomputes embedUrl on every ~20s poll — for a
+  // VOD segment its `start`/`startTime` query param is "how far into the
+  // video we are right now," so the string itself changes on every poll
+  // even though embedKey (the segment) hasn't. Binding <iframe src> to
+  // that changing string directly made the browser reload the embed's
+  // actual video content on every poll — visible as Cloudflare's poster
+  // card (or a YouTube reload) appearing for several seconds before
+  // playback resumed. `key={embedKey}` on the parent's usage already
+  // guarantees a fresh mount (and thus a fresh src) exactly when the
+  // segment genuinely changes, so within one mount this must stay fixed.
+  const [src] = useState(embedUrl);
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -266,7 +279,7 @@ export default function ChannelPlayer({ embedKey, embedUrl, provider }: ChannelP
 
       <iframe
         ref={iframeRef}
-        src={embedUrl}
+        src={src}
         onLoad={handleIframeLoad}
         className="pointer-events-none h-full w-full"
         allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
